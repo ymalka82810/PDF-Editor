@@ -1,0 +1,15 @@
+{
+  "pages": {
+    "count": "{total} pages total",
+    "gotoLabel": "Go to page",
+    "noSelection": "No pages selected"
+  },
+  "pages-rotate-left": { "label": "Rotate left" },
+  "pages-rotate-right": { "label": "Rotate right" },
+  "pages-duplicate": { "label": "Duplicate page" },
+  "pages-delete": { "label": "Delete pages" },
+  "pages-insert-blank": { "label": "Insert blank page" },
+  "pages-add-file": { "label": "Add file" },
+  "pages-extract": { "label": "Save selected as file" },
+  "pages-split-all": { "label": "Split every page" }
+}
