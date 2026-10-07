@@ -1,0 +1,21 @@
+{
+  "app.title": "עורך PDF",
+  "open": "פתיחת קובץ",
+  "save": "שמירה",
+  "undo": "ביטול",
+  "redo": "חזרה",
+  "zoomIn": "הגדלה",
+  "zoomOut": "הקטנה",
+  "fitWidth": "התאמה לרוחב",
+  "select": "בחירה",
+  "delete": "מחיקה",
+  "language": "English",
+  "dropHint": "גררו לכאן קובץ PDF או לחצו על \"פתיחת קובץ\"",
+  "loading": "טוען…",
+  "saving": "שומר…",
+  "openFailed": "לא ניתן לפתוח את הקובץ",
+  "saveFailed": "השמירה נכשלה",
+  "unsupportedFile": "סוג הקובץ לא נתמך",
+  "page": "עמוד {n}",
+  "pageOf": "עמוד {n} מתוך {total}"
+}

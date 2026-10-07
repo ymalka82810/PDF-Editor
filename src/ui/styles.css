@@ -1,0 +1,286 @@
+/* עיצוב בסיסי של המעטפת. סשן E מרחיב (מצב כהה מלא, טלפון, דיאלוגים). כלים: מחלקות עם קידומת ה-id שלהם */
+
+:root {
+  --ink: #202a3f;
+  --ink-soft: #3c4863;
+  --blue: #1e3a63;
+  --blue-2: #35588f;
+  --gold: #ab7f2e;
+  --line: #e2dcc9;
+  --soft: #efe8d6;
+  --bg: #f7f4ee;
+  --panel: #fff;
+  --muted: #726c59;
+  --danger: #a33a3a;
+  --on-accent: #fff;
+  --desk: #e8e4da;
+  --select: #2f6fde;
+  --sh-sm: 0 1px 2px rgba(32, 34, 46, 0.08);
+  --sh-md: 0 6px 20px rgba(32, 40, 61, 0.1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ink: #e9ecf5;
+    --ink-soft: #c3cadf;
+    --blue: #8fb0ec;
+    --blue-2: #b6cdf5;
+    --gold: #dfb564;
+    --line: #2a3252;
+    --soft: #202a48;
+    --bg: #0c1120;
+    --panel: #161d30;
+    --muted: #98a2c0;
+    --danger: #f08c80;
+    --on-accent: #0c1120;
+    --desk: #070a14;
+    --select: #7fb0ff;
+    color-scheme: dark;
+  }
+}
+
+[hidden] {
+  display: none !important;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Assistant', Arial, sans-serif;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+button:hover:not(:disabled) {
+  background: var(--soft);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+button:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 1px;
+}
+button.primary {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+button.primary:hover:not(:disabled) {
+  background: var(--blue-2);
+}
+button[aria-pressed='true'] {
+  background: var(--blue);
+  border-color: var(--blue);
+  color: var(--on-accent);
+}
+
+/* ---------- סרגלים ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  font-size: 1.15rem;
+  margin: 0;
+  margin-inline-end: auto;
+}
+.actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.zoom {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.zoom-value {
+  min-width: 3.5em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.toolbar:empty {
+  display: none;
+}
+.tool-group {
+  display: flex;
+  gap: 4px;
+}
+.tool .icon {
+  margin-inline-end: 4px;
+}
+
+/* ---------- אזור העבודה ---------- */
+
+.workspace {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+.panel {
+  width: 200px;
+  overflow: auto;
+  background: var(--panel);
+  border-inline-end: 1px solid var(--line);
+}
+.panel-end {
+  border-inline-end: 0;
+  border-inline-start: 1px solid var(--line);
+}
+.scroller {
+  flex: 1;
+  overflow: auto;
+  background: var(--desk);
+  position: relative;
+}
+.empty {
+  margin: 20vh auto;
+  max-width: 420px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 1.1rem;
+  padding: 32px;
+  border: 2px dashed var(--line);
+  border-radius: 16px;
+}
+.dragging .scroller {
+  outline: 3px dashed var(--select);
+  outline-offset: -8px;
+}
+.pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  /* העמודים תמיד משמאל לימין – הקואורדינטות פיזיות */
+  direction: ltr;
+  width: max-content;
+  min-width: 100%;
+}
+.page {
+  position: relative;
+  background: #fff;
+  box-shadow: var(--sh-md);
+  flex: none;
+}
+.page > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+}
+[data-tool]:not([data-tool='']) .overlay {
+  cursor: crosshair;
+}
+
+/* ---------- פעולות על העמוד ---------- */
+
+.op {
+  position: absolute;
+  cursor: move;
+}
+.op.selected {
+  outline: 1.5px solid var(--select);
+  outline-offset: 1px;
+}
+.handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #fff;
+  border: 1.5px solid var(--select);
+  border-radius: 2px;
+  margin: -5px;
+}
+.handle-nw { left: 0; top: 0; cursor: nwse-resize; }
+.handle-n { left: 50%; top: 0; cursor: ns-resize; }
+.handle-ne { left: 100%; top: 0; cursor: nesw-resize; }
+.handle-e { left: 100%; top: 50%; cursor: ew-resize; }
+.handle-se { left: 100%; top: 100%; cursor: nwse-resize; }
+.handle-s { left: 50%; top: 100%; cursor: ns-resize; }
+.handle-sw { left: 0; top: 100%; cursor: nesw-resize; }
+.handle-w { left: 0; top: 50%; cursor: ew-resize; }
+.drag-rect {
+  position: absolute;
+  border: 1.5px dashed var(--select);
+  background: color-mix(in srgb, var(--select) 10%, transparent);
+  pointer-events: none;
+}
+
+/* ---------- הודעות ---------- */
+
+.toasts {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  background: var(--ink);
+  color: var(--bg);
+  padding: 10px 18px;
+  border-radius: 10px;
+  box-shadow: var(--sh-md);
+}
+.toast-error {
+  background: var(--danger);
+  color: #fff;
+}
+
+@media (max-width: 700px) {
+  .panel {
+    display: none;
+  }
+  .pages {
+    padding: 12px;
+  }
+}

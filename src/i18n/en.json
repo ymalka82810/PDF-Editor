@@ -1,0 +1,21 @@
+{
+  "app.title": "PDF Editor",
+  "open": "Open file",
+  "save": "Save",
+  "undo": "Undo",
+  "redo": "Redo",
+  "zoomIn": "Zoom in",
+  "zoomOut": "Zoom out",
+  "fitWidth": "Fit width",
+  "select": "Select",
+  "delete": "Delete",
+  "language": "עברית",
+  "dropHint": "Drop a PDF here or click \"Open file\"",
+  "loading": "Loading…",
+  "saving": "Saving…",
+  "openFailed": "Could not open the file",
+  "saveFailed": "Saving failed",
+  "unsupportedFile": "Unsupported file type",
+  "page": "Page {n}",
+  "pageOf": "Page {n} of {total}"
+}
