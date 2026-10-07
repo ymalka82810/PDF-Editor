@@ -3,6 +3,9 @@
  * (סשן E אחראי לעיצוב ולהרחבות; החוזה מול הכלים הוא EditorApi ב-core/registry.ts)
  */
 
+import { Capacitor } from '@capacitor/core';
+import { Filesystem } from '@capacitor/filesystem';
+import { CapacitorShareTarget } from '@capgo/capacitor-share-target';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { registerSW } from 'virtual:pwa-register';
 import { rectToPdf, rectToView } from '../core/coords';
@@ -18,6 +21,13 @@ import { initialTheme, onThemeChange, setTheme, theme, type Theme } from './them
 import { Viewer } from './viewer';
 
 const isPdf = (f: File) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+
+function base64ToBytes(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
 const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
 const ARROWS: Record<string, [number, number]> = {
   arrowup: [0, -1],
@@ -352,6 +362,25 @@ export function startApp(root: HTMLElement) {
       console.error(err);
       toast(t('openFailed'), 'error');
     }
+  }
+
+  /* ---------- Android: קבלת PDF מ"שיתוף" מאפליקציה אחרת ----------
+   * "פתח עם" (ACTION_VIEW) דורש טיפול נוסף בצד android/ (MainActivity.getIntent()) -
+   * לא נבדק כאן כי אין Android SDK בסביבה הזו. */
+  if (Capacitor.isNativePlatform()) {
+    void CapacitorShareTarget.addListener('shareReceived', (event) => {
+      const shared = event.files.find((f) => f.mimeType === 'application/pdf' || /\.pdf$/i.test(f.name));
+      if (!shared) return;
+      void Filesystem.readFile({ path: shared.uri })
+        .then(({ data }) => {
+          if (typeof data !== 'string') throw new Error('תוצאה לא צפויה מ-Filesystem.readFile');
+          return openFile(new File([base64ToBytes(data) as BlobPart], shared.name || 'shared.pdf', { type: 'application/pdf' }));
+        })
+        .catch((err: unknown) => {
+          console.error(err);
+          toast(t('openFailed'), 'error');
+        });
+    });
   }
 
   async function save() {
