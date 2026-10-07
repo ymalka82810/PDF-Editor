@@ -1,0 +1,5 @@
+{
+  "label": "Edit text",
+  "noText": "No text was found on this page. If it is scanned, recognize its text first.",
+  "missing": "The characters {chars} are not in the original font, so this line will use a substitute font."
+}

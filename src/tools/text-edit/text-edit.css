@@ -1,0 +1,42 @@
+/* עריכת טקסט קיים */
+
+[data-tool='text-edit'] .overlay {
+  cursor: text;
+}
+.text-edit-frame {
+  position: absolute;
+  outline: 1px dashed color-mix(in srgb, var(--select) 60%, transparent);
+  background: color-mix(in srgb, var(--select) 7%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.text-edit-cover,
+.text-edit-box {
+  position: absolute;
+  pointer-events: none;
+}
+.text-edit-box {
+  transform-origin: center;
+}
+.text-edit-text,
+.text-edit-input {
+  position: absolute;
+  white-space: pre;
+}
+.text-edit-editor {
+  position: absolute;
+  z-index: 5;
+}
+.text-edit-input {
+  pointer-events: auto;
+  cursor: text;
+  outline: 2px solid var(--select);
+  outline-offset: 1px;
+  border-radius: 1px;
+}
+.op.text-edit-deleted.selected {
+  outline-style: dashed;
+}
+.op.text-edit-hidden {
+  visibility: hidden;
+}
