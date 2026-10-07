@@ -2,7 +2,7 @@
  * הנתונים של פעולת text-edit וכתיבתה ל-PDF:
  * מכסים את המקום המקורי במלבן בצבע הרקע, וכותבים את הטקסט החדש במיקום של op.rect –
  * בגופן המוטמע מהקובץ אם יש בו את האותיות, ובגופן ברירת המחדל לאותיות שחסרות בו.
- * הכיסוי לא מוחק את הטקסט הישן מזרם התוכן: הוא לא נראה, אבל חיפוש בקובץ עוד ימצא אותו.
+ * הטקסט הישן נמחק גם מזרם התוכן (remove-text.ts), כדי שחיפוש בקובץ לא ימצא אותו. הכיסוי נשאר כגיבוי.
  */
 
 import { StandardFonts, type PDFDocument, type PDFFont } from 'pdf-lib';
@@ -11,6 +11,7 @@ import { drawLine, hexColor, lineWidth, missingChars, remapFont, type LineStyle 
 import type { ExportCtx } from '../../core/registry';
 import type { Operation, Rect, TextItem } from '../../core/types';
 import { getFont, standardFontName } from '../../pdf-read/fonts';
+import { removeTextIn } from './remove-text';
 
 export const OP_TYPE = 'text-edit';
 
@@ -89,6 +90,14 @@ export function lineStyle(d: TextEditData, fonts: { font: PDFFont }): LineStyle 
 
 export async function exportTextEdit(op: Operation, ctx: ExportCtx) {
   const d = dataOf(op);
+  // הטקסט הישן נמחק מזרם התוכן (רק מהזרמים המקוריים של העמוד). הכיסוי נשאר כגיבוי
+  if (d.original.origin === 'pdf') {
+    try {
+      removeTextIn(ctx.pdf.context, ctx.pdfPage, [userSpace(ctx.page, d.original.rect)]);
+    } catch (err) {
+      console.warn('לא ניתן למחוק את הטקסט המקורי מזרם התוכן', err);
+    }
+  }
   const c = userSpace(ctx.page, coverRect(d));
   ctx.pdfPage.drawRectangle({ x: c.x, y: c.y, width: c.w, height: c.h, color: hexColor(d.bg), borderWidth: 0 });
   if (!d.text.trim()) return;
