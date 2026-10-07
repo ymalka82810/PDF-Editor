@@ -217,8 +217,8 @@ describe('export', () => {
     expect(Math.abs(right(edited) - right(orig))).toBeLessThan(2);
     expect(Math.abs(edited.baseline - orig.baseline)).toBeLessThan(2);
     expect(edited.size).toBeCloseTo(14, 1);
-    // ידוע ומקובל: הכיסוי מסתיר את הטקסט הישן, אבל הוא נשאר בזרם התוכן ולכן עדיין נקרא
-    expect((await textOf(out)).text).toContain('שלום עולם, זו שורה ראשונה.');
+    // הטקסט הישן נמחק גם מזרם התוכן, ולכן גם חיפוש בקובץ לא ימצא אותו
+    expect((await textOf(out)).text).not.toContain('שלום עולם, זו שורה ראשונה.');
   });
 
   it('hebrew.pdf: the embedded font when it has all letters, otherwise the whole line in the default font', async () => {
