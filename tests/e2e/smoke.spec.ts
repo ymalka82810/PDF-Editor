@@ -171,6 +171,48 @@ test('language toggle switches to LTR English', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 });
 
+test('theme button cycles system → light → dark and persists data-theme', async ({ page }) => {
+  const html = page.locator('html');
+  await expect(html).not.toHaveAttribute('data-theme');
+  await page.locator('[data-cmd=theme]').click();
+  await expect(html).toHaveAttribute('data-theme', 'light');
+  await page.locator('[data-cmd=theme]').click();
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  await page.locator('[data-cmd=theme]').click();
+  await expect(html).not.toHaveAttribute('data-theme');
+});
+
+test('help dialog opens with "?" and lists shortcuts, closes with the OK button', async ({ page }) => {
+  await page.keyboard.press('?');
+  const dlg = page.locator('dialog.dlg');
+  await expect(dlg).toBeVisible();
+  await expect(dlg.locator('dt kbd')).not.toHaveCount(0);
+  await dlg.locator('.dlg-ok').click();
+  await expect(dlg).toBeHidden();
+});
+
+test('arrow keys move the selected operation by screen pixels', async ({ page }) => {
+  await openFixture(page, 'multipage.pdf', 5);
+  const first = page.locator('.page[data-page-id]').first();
+  const box = (await first.locator('.overlay').boundingBox())!;
+  await page.keyboard.press('r');
+  await dragIn(page, box, [60, 60], [160, 140]);
+  const [before] = await ops(page);
+  await first.locator('.op').click();
+  await page.keyboard.press('ArrowRight');
+  const [after] = await ops(page);
+  expect(after.x).toBeGreaterThan(before.x);
+  expect(after.y).toBeCloseTo(before.y, 3);
+});
+
+test('phone viewport: toolbar is reachable and touch targets are at least 44px', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openFixture(page, 'multipage.pdf', 5);
+  const toolBtn = page.locator('.tool').first();
+  const box = (await toolBtn.boundingBox())!;
+  expect(box.height).toBeGreaterThanOrEqual(44);
+});
+
 test('cropbox.pdf: a dragged rectangle lands at the right PDF user-space position', async ({ page }) => {
   await openFixture(page, 'cropbox.pdf', 1);
   const pageEl = page.locator('.page[data-page-id]').first();

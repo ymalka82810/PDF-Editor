@@ -4,6 +4,7 @@
  */
 
 import type { PDFDocumentProxy } from 'pdfjs-dist';
+import { rectToPdf, rectToView } from '../core/coords';
 import { readSource, stateFromBytes } from '../core/document';
 import { exportPdf } from '../core/export';
 import { initialLang, lang, onLangChange, setLang, t } from '../core/i18n';
@@ -12,12 +13,21 @@ import { openPdfjs } from '../core/pdfjs';
 import { registry, type EditorApi, type Tool } from '../core/registry';
 import { loadTools } from './load-tools';
 import { editedName, saveBytes } from './save';
+import { initialTheme, onThemeChange, setTheme, theme, type Theme } from './theme';
 import { Viewer } from './viewer';
 
 const isPdf = (f: File) => f.type === 'application/pdf' || /\.pdf$/i.test(f.name);
+const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
+const ARROWS: Record<string, [number, number]> = {
+  arrowup: [0, -1],
+  arrowdown: [0, 1],
+  arrowleft: [-1, 0],
+  arrowright: [1, 0],
+};
 
 export function startApp(root: HTMLElement) {
   setLang(initialLang());
+  setTheme(initialTheme());
   loadTools();
 
   const store = new Store();
@@ -38,6 +48,8 @@ export function startApp(root: HTMLElement) {
           <button type="button" data-cmd="fitWidth" data-t="fitWidth"></button>
         </span>
         <button type="button" class="primary" data-cmd="save" data-t="save" disabled></button>
+        <button type="button" data-cmd="theme" data-t-title="theme"></button>
+        <button type="button" data-cmd="help" data-t-title="help">?</button>
         <button type="button" data-cmd="lang" data-t="language"></button>
       </div>
       <input type="file" class="file-input" accept="application/pdf,.pdf,image/*" hidden>
@@ -48,6 +60,7 @@ export function startApp(root: HTMLElement) {
       <main class="scroller"><p class="empty" data-t="dropHint"></p></main>
       <aside class="panel panel-end" hidden></aside>
     </div>
+    <div class="drawer-backdrop"></div>
     <div class="toasts" aria-live="polite"></div>`;
 
   const $ = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
@@ -117,6 +130,34 @@ export function startApp(root: HTMLElement) {
     tool.panel.mount(box, api);
   }
 
+  const backdrop = $<HTMLElement>('.drawer-backdrop');
+  const actions = $<HTMLElement>('.actions');
+  for (const side of ['start', 'end'] as const) {
+    const aside = $<HTMLElement>('.panel-' + side);
+    if (aside.hidden) continue;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'drawer-toggle';
+    btn.dataset.cmd = 'drawer-' + side;
+    btn.textContent = side === 'start' ? '☰' : '▤';
+    btn.setAttribute('data-t-title', 'panels');
+    actions.insertBefore(btn, actions.firstChild);
+  }
+  function closeDrawers() {
+    for (const aside of root.querySelectorAll<HTMLElement>('.panel')) aside.classList.remove('open');
+    backdrop.classList.remove('open');
+  }
+  function toggleDrawer(side: 'start' | 'end') {
+    const aside = $<HTMLElement>('.panel-' + side);
+    const opening = !aside.classList.contains('open');
+    closeDrawers();
+    if (opening) {
+      aside.classList.add('open');
+      backdrop.classList.add('open');
+    }
+  }
+  backdrop.onclick = closeDrawers;
+
   function setActiveTool(id: string | null) {
     if (id === active) return;
     const prev = active ? registry.get(active) : undefined;
@@ -132,7 +173,8 @@ export function startApp(root: HTMLElement) {
   function translate() {
     document.title = t('app.title');
     for (const el of root.querySelectorAll<HTMLElement>('[data-t]')) el.textContent = t(el.dataset.t!);
-    for (const el of root.querySelectorAll<HTMLElement>('[data-t-title]')) el.title = el.ariaLabel = t(el.dataset.tT!);
+    for (const el of root.querySelectorAll<HTMLElement>('[data-t-title]')) el.title = el.ariaLabel = t(el.dataset.tTitle!);
+    $<HTMLButtonElement>('[data-cmd=theme]').textContent = t('theme.' + theme());
     for (const [id, b] of toolButtons) {
       const tool = registry.get(id)!;
       const label = t(id + '.' + (tool.label ?? 'label'));
@@ -155,7 +197,12 @@ export function startApp(root: HTMLElement) {
     fitWidth: () => viewer.fitWidth(),
     save: () => void save(),
     lang: () => setLang(lang() === 'he' ? 'en' : 'he'),
+    theme: () => setTheme(THEME_CYCLE[(THEME_CYCLE.indexOf(theme()) + 1) % THEME_CYCLE.length]),
+    help: () => showHelp(),
+    'drawer-start': () => toggleDrawer('start'),
+    'drawer-end': () => toggleDrawer('end'),
   };
+  onThemeChange(translate);
   root.addEventListener('click', (e) => {
     const cmd = (e.target as HTMLElement).closest<HTMLElement>('[data-cmd]')?.dataset.cmd;
     if (cmd) commands[cmd]?.();
@@ -221,7 +268,11 @@ export function startApp(root: HTMLElement) {
     else if (e.key === 'Escape') {
       if (store.selected) store.select(null);
       else setActiveTool(null);
-    } else if (!mod && !e.altKey) {
+    } else if (mod && (k === '=' || k === '+')) viewer.setZoom(viewer.getZoom() * 1.2);
+    else if (mod && k === '-') viewer.setZoom(viewer.getZoom() / 1.2);
+    else if (!mod && e.key === '?') showHelp();
+    else if (!mod && !e.altKey && store.selected && ARROWS[k]) moveSelected(ARROWS[k], e.shiftKey);
+    else if (!mod && !e.altKey) {
       const tool = registry.all().find((tl) => tl.shortcut?.toLowerCase() === k);
       if (!tool) return;
       if (tool.run) void tool.run(api);
@@ -229,6 +280,52 @@ export function startApp(root: HTMLElement) {
     } else return;
     e.preventDefault();
   });
+
+  /** הזזת הפעולה הנבחרת בחיצים, בפיקסלים קבועים על המסך (עובר דרך geom העמוד, לפי הסיבוב) */
+  function moveSelected([dx, dy]: [number, number], big: boolean) {
+    const op = store.get().ops.find((o) => o.id === store.selected);
+    const view = op && viewer.viewOf(op.pageId);
+    if (!op || !view) return;
+    const step = big ? 10 : 1;
+    const r = rectToView(view.geom, op.rect);
+    r.x += dx * step;
+    r.y += dy * step;
+    store.updateOp(op.id, { rect: rectToPdf(view.geom, r) });
+  }
+
+  async function showHelp() {
+    const dlg = document.createElement('dialog');
+    dlg.className = 'dlg';
+    const rows: [string, string][] = [
+      ['Ctrl+Z', t('help.undo')],
+      ['Ctrl+Y', t('help.redo')],
+      ['Ctrl+S', t('help.save')],
+      ['Ctrl+O', t('help.open')],
+      ['Delete', t('help.delete')],
+      ['Escape', t('help.escape')],
+      ['Ctrl+ +/-', t('help.zoomIn') + ' / ' + t('help.zoomOut')],
+      ['↑↓←→', t('help.move')],
+      ['?', t('help.toggle')],
+    ];
+    for (const tool of registry.all()) if (tool.shortcut) rows.push([tool.shortcut.toUpperCase(), t(tool.id + '.' + (tool.label ?? 'label'))]);
+    dlg.innerHTML = `
+      <form method="dialog" class="dlg-form">
+        <h2 class="dlg-title"></h2>
+        <dl class="help-list">${rows.map(() => `<dt><kbd></kbd></dt><dd></dd>`).join('')}</dl>
+        <div class="dlg-actions"><button type="submit" class="dlg-ok primary"></button></div>
+      </form>`;
+    dlg.querySelector('.dlg-title')!.textContent = t('help.title');
+    dlg.querySelector('.dlg-ok')!.textContent = t('dialog.ok');
+    const kbds = dlg.querySelectorAll('kbd');
+    const dds = dlg.querySelectorAll('dd');
+    rows.forEach(([k2, v], i) => {
+      kbds[i].textContent = k2;
+      dds[i].textContent = v;
+    });
+    document.body.appendChild(dlg);
+    dlg.addEventListener('close', () => dlg.remove());
+    dlg.showModal();
+  }
 
   /* ---------- פתיחה ושמירה ---------- */
 
