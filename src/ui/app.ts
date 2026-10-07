@@ -7,7 +7,6 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { registerSW } from 'virtual:pwa-register';
 import { rectToPdf, rectToView } from '../core/coords';
 import { readSource, stateFromBytes } from '../core/document';
-import { exportPdf } from '../core/export';
 import { initialLang, lang, onLangChange, setLang, t } from '../core/i18n';
 import { Store } from '../core/model';
 import { openPdfjs } from '../core/pdfjs';
@@ -94,7 +93,7 @@ export function startApp(root: HTMLElement) {
       store.update((s) => ({ ...s, sources: { ...s.sources, [source.id]: source } }), { record: false });
       return { sourceId: source.id, pages };
     },
-    exportPdf: () => exportPdf(store.get()),
+    exportPdf: async () => (await import('../core/export')).exportPdf(store.get()),
     toast,
   };
 
@@ -361,6 +360,7 @@ export function startApp(root: HTMLElement) {
     const btn = $<HTMLButtonElement>('[data-cmd=save]');
     btn.disabled = true;
     try {
+      const { exportPdf } = await import('../core/export');
       const bytes = await exportPdf(s);
       const first = s.pages.find((p) => p.sourceId)?.sourceId;
       await saveBytes(editedName(first ? s.sources[first].name : 'document.pdf'), bytes);
