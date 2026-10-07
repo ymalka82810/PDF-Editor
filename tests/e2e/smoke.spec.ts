@@ -171,6 +171,15 @@ test('language toggle switches to LTR English', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 });
 
+test('PWA: manifest link resolves and declares standalone + icons', async ({ page, request }) => {
+  const href = await page.locator('link[rel=manifest]').getAttribute('href');
+  const res = await request.get(new URL(href!, page.url()).toString());
+  expect(res.ok()).toBeTruthy();
+  const manifest = await res.json();
+  expect(manifest.display).toBe('standalone');
+  expect(manifest.icons.length).toBeGreaterThan(0);
+});
+
 test('theme button cycles system → light → dark and persists data-theme', async ({ page }) => {
   const html = page.locator('html');
   await expect(html).not.toHaveAttribute('data-theme');

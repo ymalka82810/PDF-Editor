@@ -4,6 +4,7 @@
  */
 
 import type { PDFDocumentProxy } from 'pdfjs-dist';
+import { registerSW } from 'virtual:pwa-register';
 import { rectToPdf, rectToView } from '../core/coords';
 import { readSource, stateFromBytes } from '../core/document';
 import { exportPdf } from '../core/export';
@@ -11,6 +12,7 @@ import { initialLang, lang, onLangChange, setLang, t } from '../core/i18n';
 import { Store } from '../core/model';
 import { openPdfjs } from '../core/pdfjs';
 import { registry, type EditorApi, type Tool } from '../core/registry';
+import { confirmDialog } from './dialog';
 import { loadTools } from './load-tools';
 import { editedName, saveBytes } from './save';
 import { initialTheme, onThemeChange, setTheme, theme, type Theme } from './theme';
@@ -379,6 +381,19 @@ export function startApp(root: HTMLElement) {
   }
 
   refresh();
+
+  /* ---------- PWA: עדכון גרסה ---------- */
+
+  if ('serviceWorker' in navigator) {
+    const updateSW = registerSW({
+      onNeedRefresh() {
+        void confirmDialog(api, { title: t('update.title'), message: t('update.message'), okLabel: t('update.reload') }).then((ok) => {
+          if (ok) void updateSW(true);
+        });
+      },
+    });
+  }
+
   // לבדיקות e2e ולדיבאג
   (window as unknown as { editor: EditorApi }).editor = api;
   return api;

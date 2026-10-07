@@ -38,5 +38,8 @@
   "help.move": "Move the selected operation",
   "help.toggle": "Show/hide this help",
   "menu": "Menu",
-  "panels": "Panels"
+  "panels": "Panels",
+  "update.title": "New version",
+  "update.message": "An updated version of the editor is available. Load it now?",
+  "update.reload": "Reload"
 }
