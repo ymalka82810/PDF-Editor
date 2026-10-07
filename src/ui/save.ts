@@ -3,11 +3,11 @@
  * כדי שהמשתמש יבחר איפה לשמור (אפליקציית הקבצים, Drive וכו').
  */
 import { Capacitor } from '@capacitor/core';
-import { Directory, Filesystem } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
 
 export async function saveBytes(name: string, bytes: Uint8Array, type = 'application/pdf') {
   if (Capacitor.isNativePlatform()) {
+    // import() דינמי: ב-build הרגיל (GitHub Pages) אין סיבה לגרור את @capacitor/filesystem ו-@capacitor/share
+    const [{ Directory, Filesystem }, { Share }] = await Promise.all([import('@capacitor/filesystem'), import('@capacitor/share')]);
     const { uri } = await Filesystem.writeFile({ path: name, data: toBase64(bytes), directory: Directory.Cache });
     await Share.share({ title: name, url: uri });
     return;

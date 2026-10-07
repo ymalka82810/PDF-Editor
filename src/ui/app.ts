@@ -4,8 +4,6 @@
  */
 
 import { Capacitor } from '@capacitor/core';
-import { Filesystem } from '@capacitor/filesystem';
-import { CapacitorShareTarget } from '@capgo/capacitor-share-target';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { registerSW } from 'virtual:pwa-register';
 import { rectToPdf, rectToView } from '../core/coords';
@@ -368,19 +366,24 @@ export function startApp(root: HTMLElement) {
    * "פתח עם" (ACTION_VIEW) דורש טיפול נוסף בצד android/ (MainActivity.getIntent()) -
    * לא נבדק כאן כי אין Android SDK בסביבה הזו. */
   if (Capacitor.isNativePlatform()) {
-    void CapacitorShareTarget.addListener('shareReceived', (event) => {
-      const shared = event.files.find((f) => f.mimeType === 'application/pdf' || /\.pdf$/i.test(f.name));
-      if (!shared) return;
-      void Filesystem.readFile({ path: shared.uri })
-        .then(({ data }) => {
-          if (typeof data !== 'string') throw new Error('תוצאה לא צפויה מ-Filesystem.readFile');
-          return openFile(new File([base64ToBytes(data) as BlobPart], shared.name || 'shared.pdf', { type: 'application/pdf' }));
-        })
-        .catch((err: unknown) => {
-          console.error(err);
-          toast(t('openFailed'), 'error');
+    // import() דינמי: אל תגרור את הפלאגין הזה (ואת @capacitor/filesystem) ל-bundle הראשי של האתר הרגיל
+    void Promise.all([import('@capgo/capacitor-share-target'), import('@capacitor/filesystem')]).then(
+      ([{ CapacitorShareTarget }, { Filesystem }]) => {
+        void CapacitorShareTarget.addListener('shareReceived', (event) => {
+          const shared = event.files.find((f) => f.mimeType === 'application/pdf' || /\.pdf$/i.test(f.name));
+          if (!shared) return;
+          void Filesystem.readFile({ path: shared.uri })
+            .then(({ data }) => {
+              if (typeof data !== 'string') throw new Error('תוצאה לא צפויה מ-Filesystem.readFile');
+              return openFile(new File([base64ToBytes(data) as BlobPart], shared.name || 'shared.pdf', { type: 'application/pdf' }));
+            })
+            .catch((err: unknown) => {
+              console.error(err);
+              toast(t('openFailed'), 'error');
+            });
         });
-    });
+      },
+    );
   }
 
   async function save() {

@@ -22,7 +22,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- "פתח עם": מנהל קבצים/דפדפן פותחים PDF ישירות בעורך -->
+            <!-- "פתח עם": מנהל קבצים/דפדפן פותחים PDF ישירות בעורך.
+                 ה-intent-filter כאן מכוון את המערכת ל-MainActivity, אבל אין עדיין קוד שקורא
+                 בפועל את getIntent().getData() ומעביר את הקובץ ל-WebView (צריך קוד native נוסף
+                 ב-MainActivity.java, בהשראת @capgo/capacitor-share-target שמטפל ב-SEND).
+                 לא מומש ולא נבדק - אין Android SDK/מכשיר בסביבת הפיתוח הזו. TODO לסשן הבא. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
