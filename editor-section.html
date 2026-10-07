@@ -1,0 +1,38 @@
+  <section id="view-template" hidden aria-labelledby="tplTitle">
+    <div class="panel">
+      <h2 id="tplTitle">תבנית מלוח קיים</h2>
+      <div class="row2 tpl-head">
+        <div><label for="tplDate" id="tplDateLabel">תאריך הלוח הישן</label><input type="date" id="tplDate" lang="he"></div>
+        <p id="tplOcc" class="hint tpl-occ"></p>
+      </div>
+      <label class="check"><input type="checkbox" id="tplRules" checked> לעדכן את זמני התפילות של התבנית לפי הקובץ</label>
+      <details class="tpl-help"><summary>איך עורכים את התבנית?</summary><p class="hint">האזורים המסומנים בכחול יוחלפו בכל לוח. לוחצים על אזור כדי לערוך אותו: לכתוב בו טקסט משלכם ("טקסט שכותבים כאן"), או לבחור ערך שמתעדכן בכל לוח (תפילה, זמן, פרשה, תאריך). לוחצים על טקסט אפור כדי לסמן אותו ולשנות אותו. עם "עריכת טקסט" אפשר גם ללחוץ ישירות על כל טקסט בעמוד ולערוך, להוסיף או למחוק אותו – לתמיד או לשבוע הזה בלבד. כדי להזיז אזור או טקסט אפור – לוחצים על "הזזת אזורים" וגוררים אותו למקום אחר בעמוד, והוא יונח במקום הפנוי הקרוב, מיושר לשורה ולעמודה של הטקסט שסביבו.</p></details>
+      <p class="hint" id="tplScanHint" hidden>לא זוהה טקסט בקובץ (מסמך סרוק, תמונה לא ברורה, או שאין חיבור לאינטרנט לזיהוי טקסט בתמונה). לחצו "סימון אזור" וגררו על כל שעה או תאריך שצריך להחליף.</p>
+      <div class="tpl-fontfill" id="tplFontFill" hidden>
+        <p class="hint" id="tplFontMsg"></p>
+        <button type="button" id="tplFontLocal" hidden>השלמה מהגופנים שבמחשב</button>
+        <button type="button" id="tplFontUpload">העלאת קובץ גופן</button>
+        <input type="file" id="tplFontFile" accept=".ttf,.otf,.ttc,.otc,font/ttf,font/otf,font/collection" hidden>
+      </div>
+    </div>
+    <div class="tpl-layout">
+      <div class="tpl-stage">
+        <div class="tpl-tools">
+          <button type="button" id="tplDraw" aria-pressed="false">סימון אזור</button>
+          <button type="button" id="tplEditText" aria-pressed="false">✎ עריכת טקסט</button>
+          <button type="button" id="tplMove" aria-pressed="false">✥ הזזת אזורים</button>
+        </div>
+        <div class="tpl-page" id="tplPage"><img id="tplImg" alt="הלוח הישן"><div id="tplBoxes"></div></div>
+      </div>
+      <div id="tplSlots" class="tpl-slots"></div>
+    </div>
+    <div class="panel" id="tplPreviewWrap" hidden>
+      <h2 id="tplPreviewTitle">תצוגה מקדימה</h2>
+      <img id="tplPreviewImg" class="luach-img" alt="תצוגה מקדימה של הלוח">
+    </div>
+    <div class="actions sticky">
+      <button type="button" class="primary" id="tplSave">שמירה והפעלה</button>
+      <button type="button" id="tplPreview">תצוגה מקדימה</button>
+      <button type="button" id="tplCancel">ביטול</button>
+    </div>
+  </section>
