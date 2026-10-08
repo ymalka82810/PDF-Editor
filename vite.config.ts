@@ -31,8 +31,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // pdf.js/pdf-lib נטענים דינמית; מטמינים את כל מה שה-build מפיק כדי שהעורך יעבוד בלי אינטרנט
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // pdf.js/pdf-lib נטענים דינמית; מטמינים את כל מה שה-build מפיק (כולל ה-worker ב-.mjs והגופן ב-.ttf) כדי שהעורך יעבוד בלי אינטרנט
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,woff2,ttf}'],
+        // ה-worker של pdf.js (כ-1.3MB) וה-chunk של הייצוא גדולים ממגבלת ברירת המחדל
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
     }),
   ],
