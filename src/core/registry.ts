@@ -5,9 +5,9 @@
 
 import type { PDFDocument, PDFFont, PDFPage } from 'pdf-lib';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { ViewGeom } from './coords';
+import type { Handle, ViewGeom } from './coords';
 import type { Store } from './model';
-import type { DocState, Operation, PageRef, Point } from './types';
+import type { DocState, Operation, PageRef, Point, Rect } from './types';
 
 /** מילון תרגום של כלי: מפתח ← טקסט. המפתחות מקבלים קידומת אוטומטית "<tool id>." */
 export type Locale = Record<string, string>;
@@ -102,6 +102,12 @@ export interface Tool {
   editOp?(op: Operation, view: PageView, api: EditorApi): void;
   /** האם אפשר להזיז/לשנות גודל בשכבה הכללית. ברירת מחדל true */
   movable?: boolean;
+  /**
+   * תיקון המלבן בזמן שינוי גודל בשכבה הכללית (למשל שמירת יחס בתמונה). לא נקרא בהזזה.
+   * rect ו-handle במערכת של העמוד (נקודות PDF, n = למעלה ב-PDF) – הסיבוב כבר מטופל (pdfHandle ב-coords.ts).
+   * shift – המשתמש מחזיק Shift. בלי הפונקציה המלבן נשאר כמו שהוא.
+   */
+  constrainRect?(op: Operation, rect: Rect, handle: Handle, shift: boolean): Rect;
   /** כתיבת הפעולה לעמוד ב-PDF */
   exportOp?(op: Operation, ctx: ExportCtx): void | Promise<void>;
   /** שלב ייצוא ברמת המסמך, אחרי כל העמודים (טפסים, שכבת טקסט וכו') */

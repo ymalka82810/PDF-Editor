@@ -10,6 +10,7 @@ import { dragRect } from '../../core/interaction';
 import { hexColor } from '../../core/pdf-text';
 import type { EditorApi, PagePointer, PageView, Tool } from '../../core/registry';
 import type { Operation, Point, Rect } from '../../core/types';
+import { shiftKeepsRatio } from '../../ui/widgets/aspect';
 import { floatingBar, stepper, swatches, toggleButton } from '../../ui/widgets/controls';
 import he from './locales/he.json';
 import en from './locales/en.json';
@@ -268,7 +269,7 @@ const tools: Tool[] = (['rect', 'ellipse', 'line', 'arrow'] as const).map((kind,
     en: (en as Record<string, Record<string, string>>)[kind],
   },
   onPointerDown: (p: PagePointer, api: EditorApi) => void create(kind, p, api),
-  ...(i === 0 ? { renderOp: renderShape, exportOp: exportShape } : {}),
+  ...(i === 0 ? { renderOp: renderShape, exportOp: exportShape, constrainRect: shiftKeepsRatio } : {}),
 }));
 
 export default tools;

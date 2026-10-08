@@ -5,10 +5,10 @@
  */
 
 import type { PDFDocument, PDFImage } from 'pdf-lib';
-import { userSpace } from '../../core/coords';
+import { fitAspect, userSpace } from '../../core/coords';
 import type { EditorApi, ExportCtx, Tool } from '../../core/registry';
 import type { Operation, Rect } from '../../core/types';
-import { drawInFrame, placeFrame } from '../../ui/widgets/frame';
+import { drawInFrame, frameSize, placeFrame } from '../../ui/widgets/frame';
 import { centeredRect, currentView } from '../../ui/widgets/placement';
 import { getImage, imageUrl, putImageFile } from './store';
 import he from './locales/he.json';
@@ -119,6 +119,15 @@ const tool: Tool = {
     if (url) img.src = url;
     placeFrame(img, view, op.rect, d.rotate);
     el.appendChild(img);
+  },
+
+  /** שינוי גודל שומר תמיד על היחס של התמונה (במסגרת מסובבת – היחס ההפוך במערכת של העמוד) */
+  constrainRect(op, rect, handle) {
+    const d = dataOf(op);
+    const img = getImage(d.imageId);
+    if (!img) return rect;
+    const f = frameSize({ x: 0, y: 0, w: img.width, h: img.height }, d.rotate);
+    return fitAspect(rect, handle, f.w / f.h);
   },
 
   exportOp: exportImage,
