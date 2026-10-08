@@ -16,8 +16,10 @@ import {
 import { rectToView } from '../../core/coords';
 import type { DocExportCtx, EditorApi, PageView, Tool } from '../../core/registry';
 import type { Rect } from '../../core/types';
+import { confirmDialog } from '../../ui/dialog';
 import en from './locales/en.json';
 import he from './locales/he.json';
+import './forms.css';
 
 type Kind = 'text' | 'checkbox' | 'radio' | 'dropdown' | 'list';
 
@@ -39,7 +41,7 @@ interface FieldInfo {
 }
 
 /** מפתח מיוחד ב-formValues (לא שם שדה אמיתי) לדגל "שיטוח בשמירה" */
-const FLATTEN_KEY = '__forms_flatten__';
+export const FLATTEN_KEY = '__forms_flatten__';
 
 let sourceId: string | null = null;
 let fields: FieldInfo[] = [];
@@ -102,7 +104,12 @@ async function indexForms(api: EditorApi) {
     const info: FieldInfo = {
       name: field.getName(),
       kind,
-      options: kind === 'dropdown' ? (field as PDFDropdown).getOptions() : kind === 'list' ? (field as PDFOptionList).getOptions() : [],
+      options:
+        kind === 'dropdown'
+          ? (field as PDFDropdown).getOptions()
+          : kind === 'list'
+            ? (field as PDFOptionList).getOptions()
+            : [],
       multiline: kind === 'text' && (field as PDFTextField).isMultiline(),
       readOnly: field.isReadOnly(),
       widgets,
@@ -174,11 +181,13 @@ function mountWidget(info: FieldInfo, widget: WidgetInfo, view: PageView, api: E
     for (const o of select.options) o.selected = sel.includes(o.value);
     select.onchange = () => {
       const picked = [...select.selectedOptions].map((o) => o.value);
-      api.store.setFormValue(info.name, info.kind === 'list' ? picked : picked[0] ?? '');
+      api.store.setFormValue(info.name, info.kind === 'list' ? picked : (picked[0] ?? ''));
     };
     wrap.appendChild(select);
   } else {
-    const field: HTMLInputElement | HTMLTextAreaElement = info.multiline ? document.createElement('textarea') : document.createElement('input');
+    const field: HTMLInputElement | HTMLTextAreaElement = info.multiline
+      ? document.createElement('textarea')
+      : document.createElement('input');
     if (field instanceof HTMLInputElement) field.type = 'text';
     field.dir = 'auto';
     field.disabled = info.readOnly;
@@ -237,10 +246,20 @@ const tool: Tool = {
   panel: {
     side: 'end',
     mount(el, api) {
-      el.innerHTML = '<label class="forms-flatten"><input type="checkbox"> <span data-t="forms.flatten"></span></label>';
+      el.innerHTML =
+        '<label class="forms-flatten"><input type="checkbox"> <span data-t="forms.flatten"></span></label>';
       const input = el.querySelector('input')!;
       input.checked = !!api.store.get().formValues[FLATTEN_KEY];
-      input.onchange = () => api.store.setFormValue(FLATTEN_KEY, input.checked);
+      input.onchange = async () => {
+        if (input.checked) {
+          const ok = await confirmDialog(api, { message: api.t('forms.flattenConfirm'), danger: true });
+          if (!ok) {
+            input.checked = false;
+            return;
+          }
+        }
+        api.store.setFormValue(FLATTEN_KEY, input.checked);
+      };
     },
   },
 

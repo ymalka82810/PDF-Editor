@@ -1,3 +1,4 @@
 {
-  "flatten": "Flatten form fields on save"
+  "flatten": "Flatten form fields on save",
+  "flattenConfirm": "Flattening removes the fillable fields - the text becomes part of the page and can no longer be edited as a form. Continue?"
 }
