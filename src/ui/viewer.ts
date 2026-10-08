@@ -37,6 +37,34 @@ export class Viewer {
     this.io = new IntersectionObserver((list) => this.onIntersect(list), { root: host, rootMargin: '600px 0px' });
     api.store.subscribe((s, prev) => this.sync(s, prev));
     api.store.onSelect(() => this.renderAllOps());
+    this.initPinchZoom();
+  }
+
+  /** פינצ'-זום בטלפון: שני מגעים על .scroller משנים את viewer.setZoom, לא את זום הדפדפן */
+  private initPinchZoom() {
+    let start: { dist: number; zoom: number } | null = null;
+    const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    this.host.addEventListener(
+      'touchstart',
+      (e) => {
+        if (e.touches.length === 2) start = { dist: dist(e.touches), zoom: this.zoom };
+      },
+      { passive: true },
+    );
+    this.host.addEventListener(
+      'touchmove',
+      (e) => {
+        if (e.touches.length !== 2 || !start) return;
+        e.preventDefault();
+        this.setZoom(start.zoom * (dist(e.touches) / start.dist));
+      },
+      { passive: false },
+    );
+    const end = (e: TouchEvent) => {
+      if (e.touches.length < 2) start = null;
+    };
+    this.host.addEventListener('touchend', end);
+    this.host.addEventListener('touchcancel', end);
   }
 
   views(): PageView[] {
