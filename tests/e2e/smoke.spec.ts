@@ -233,6 +233,16 @@ test('phone viewport: a crowded toolbar (many tool groups) scrolls horizontally 
   await expect(page.locator('.tool[data-tool=pages-rotate-left]')).toBeAttached();
 });
 
+test('phone viewport: the thumbnails side panel opens as a drawer and closes on backdrop click', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openFixture(page, 'multipage.pdf', 5);
+  await expect(page.locator('[data-cmd=drawer-start]')).toBeVisible();
+  await page.locator('[data-cmd=drawer-start]').click();
+  await expect(page.locator('.panel-start')).toHaveClass(/open/);
+  await page.locator('.drawer-backdrop').click({ position: { x: 5, y: 5 } });
+  await expect(page.locator('.panel-start')).not.toHaveClass(/open/);
+});
+
 test('cropbox.pdf: a dragged rectangle lands at the right PDF user-space position', async ({ page }) => {
   await openFixture(page, 'cropbox.pdf', 1);
   const pageEl = page.locator('.page[data-page-id]').first();
