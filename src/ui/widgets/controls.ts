@@ -63,7 +63,12 @@ export function toggleButton(container: HTMLElement, label: string, active: bool
   return b;
 }
 
-export function segmented<T extends string>(container: HTMLElement, options: { value: T; label: string }[], value: T, onPick: (v: T) => void) {
+export function segmented<T extends string>(
+  container: HTMLElement,
+  options: { value: T; label: string }[],
+  value: T,
+  onPick: (v: T) => void,
+) {
   const wrap = document.createElement('span');
   wrap.className = 'widget-segmented';
   for (const opt of options) {

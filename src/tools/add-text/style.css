@@ -1,22 +1,22 @@
+/* תיבת טקסט חדשה. ה-op עצמו לא חותך (הפס הצף יוצא ממנו); התוכן כן */
 .add-text-op {
-  font-family: 'Assistant', Arial, sans-serif;
+  font-family: 'Alef', 'Assistant', Arial, sans-serif;
   line-height: 1.25;
-  overflow: hidden;
 }
 .add-text-content {
-  position: absolute;
-  inset: 0;
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: anywhere;
+  overflow: hidden;
   pointer-events: none;
 }
 .add-text-editor {
-  position: absolute;
   resize: none;
   border: 1.5px dashed var(--select, #2f6fde);
-  background: rgba(255, 255, 255, 0.9);
+  background: color-mix(in srgb, var(--panel, #fff) 90%, transparent);
   font-family: inherit;
-  padding: 0;
-  outline: none;
   line-height: 1.25;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  box-sizing: border-box;
 }
