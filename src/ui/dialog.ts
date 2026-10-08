@@ -1,6 +1,6 @@
 /**
  * דיאלוג משותף (alert/confirm/prompt) בעיצוב שלנו, במקום את אלה של הדפדפן.
- * בהשראת legacy/dialog.js. כלים של סשנים אחרים משתמשים ב-confirmDialog/alertDialog/promptDialog.
+ * כלים של סשנים אחרים משתמשים ב-confirmDialog/alertDialog/promptDialog.
  */
 
 import type { EditorApi } from '../core/registry';
