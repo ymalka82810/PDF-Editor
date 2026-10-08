@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:offline": "playwright test --config=playwright.offline.config.ts",
     "lint": "eslint src tests",
     "format": "prettier --write src tests",
     "fixtures": "node scripts/make-fixtures.mjs"
