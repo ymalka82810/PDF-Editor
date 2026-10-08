@@ -1,0 +1,26 @@
+/* הדגשה וקו חוצה */
+[data-tool='highlight'] .overlay,
+[data-tool='strike'] .overlay {
+  cursor: text;
+}
+.highlight-op.highlight-highlight {
+  mix-blend-mode: multiply;
+}
+.highlight-fill {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  pointer-events: none;
+}
+.highlight-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.drag-rect.highlight-ghost {
+  border-style: solid;
+  background: color-mix(in srgb, #ffe14d 35%, transparent);
+}

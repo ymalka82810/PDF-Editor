@@ -1,0 +1,6 @@
+/* תמונה שנוספה: ממלאת את המסגרת ושומרת על היחס */
+.image-content {
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}

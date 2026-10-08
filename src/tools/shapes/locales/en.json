@@ -1,0 +1,6 @@
+{
+  "rect": { "label": "Rectangle", "fill": "Fill" },
+  "ellipse": { "label": "Ellipse" },
+  "line": { "label": "Line" },
+  "arrow": { "label": "Arrow" }
+}
