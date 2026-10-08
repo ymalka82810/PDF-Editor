@@ -33,6 +33,7 @@ pdf.js מציג את הקובץ, ו-pdf-lib כותב PDF אמיתי (הטקסט 
   2. קורא ל-`exportOp` של הכלי של כל פעולה.
   3. קורא ל-`exportDocument` של כל כלי.
   - גופנים רק דרך `ctx.font()` ו-`ctx.embedFontBytes()`.
+  - **לא מייבאים את `core/export` סטטית מכלי או מה-UI** – רק `await import('…/core/export')`. אחרת pdf-lib חוזר ל-bundle הראשי, וה-CI נכשל.
 - **טקסט עברי** (`core/pdf-text.ts`):
   - כתיבה רק דרך `drawLine` או `drawTextBox`, שמסדרים bidi.
   - אם מטמיעים גופן לבד: חובה `forceLtrLayout(font)`. אחרת fontkit הופך את השורה שוב.

@@ -29,7 +29,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
-      - run: npx vite build
+      # נכשל אם מישהו מייבא את core/export סטטית ומחזיר את pdf-lib ל-bundle הראשי
+      - run: npx vite build 2>&1 | tee build.log && ! grep -q INEFFECTIVE_DYNAMIC_IMPORT build.log
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main'
         with:
