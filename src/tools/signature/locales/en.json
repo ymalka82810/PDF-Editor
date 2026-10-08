@@ -1,0 +1,12 @@
+{
+  "label": "Signature",
+  "title": "Add a signature",
+  "draw": "Draw",
+  "saved": "Saved",
+  "hint": "Sign here with the mouse, your finger or a pen",
+  "clear": "Clear",
+  "upload": "Upload an image…",
+  "remember": "Save this signature on this device for next time",
+  "insert": "Add",
+  "delete": "Delete the saved signature"
+}
