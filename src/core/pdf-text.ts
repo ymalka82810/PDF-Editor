@@ -97,6 +97,11 @@ export interface LineStyle {
   dir?: Dir;
   /** גופן לאותיות שאין ב-font (למשל גופן מוטמע חלקי) */
   fallback?: PDFFont;
+  /**
+   * גופנים נוספים לפי סדר, לפני fallback: כל אות נכתבת בגופן הראשון שיש בו אותה
+   * (שורה מעורבת מ-Word – עברית ב-David ואנגלית ב-Arial)
+   */
+  fallbacks?: PDFFont[];
   /** הטיה במעלות (נטוי בגופן שאין לו גרסה נטויה) */
   skew?: number;
 }
@@ -118,7 +123,7 @@ export function drawLine(page: PDFPage, text: string, x: number, y: number, styl
   const a = physical(align, rtl);
   const color = hexColor(style.color);
   const xSkew = style.skew ? degrees(style.skew) : undefined;
-  if (!style.fallback && !remaps.has(style.font)) {
+  if (simple(style)) {
     const w = measure(visual, style.font, style.size);
     const left = a === 'left' ? x : a === 'right' ? x - w : x - w / 2;
     page.drawText(visual, { x: left, y, size: style.size, font: style.font, color, opacity: style.opacity, xSkew });
@@ -139,27 +144,46 @@ export function drawLine(page: PDFPage, text: string, x: number, y: number, styl
 /** רוחב שורה (בסדר לוגי) כפי ש-drawLine יכתוב אותה */
 export function lineWidth(text: string, style: LineStyle): number {
   const visual = visualOrder(text, style.dir);
-  if (!style.fallback && !remaps.has(style.font)) return measure(visual, style.font, style.size);
+  if (simple(style)) return measure(visual, style.font, style.size);
   return splitRuns(visual, style).reduce((s, r) => s + r.w, 0);
 }
 
-/** שורה בסדר תצוגה ← קטעים לפי הגופן. font=null – רווח ריק (בגופן שאין לו צורה לרווח) */
+/** גופן אחד שיש לו צורה לכל תו – כתיבה בפקודה אחת */
+const simple = (style: LineStyle) => !style.fallback && !style.fallbacks?.length && !remaps.has(style.font);
+
+/** רוחב רווח בגופן: הצורה שלו, או spaceWidth בגופן ממופה שאין לו צורה לרווח */
+function spaceOf(f: PDFFont, size: number): number | null {
+  const r = remaps.get(f);
+  if (r) return r.spaceWidth != null ? (r.spaceWidth / 1000) * size : null;
+  return hasChar(f, ' ') ? measure(' ', f, size) : null;
+}
+
+/**
+ * שורה בסדר תצוגה ← קטעים לפי הגופן: כל אות בגופן הראשון ברשימה שיש בו אותה.
+ * רווח נשאר בגופן של הקטע שלפניו אם יש בו רווח; אחרת רווח ריק (font=null) ברוחב הרווח של הגופן הזה.
+ */
 function splitRuns(visual: string, style: LineStyle) {
-  const { font, fallback, size } = style;
-  const remap = remaps.get(font);
+  const { font, size } = style;
+  const chain = [font, ...(style.fallbacks ?? []), ...(style.fallback ? [style.fallback] : [])];
   const runs: { font: PDFFont | null; s: string; w: number }[] = [];
   for (const ch of visual) {
-    let f: PDFFont | null;
-    if (remap && /\s/.test(ch) && !hasChar(font, ch)) f = remap.spaceWidth != null || !fallback ? null : fallback;
-    else if (hasChar(font, ch) || !fallback) f = font;
-    else f = fallback;
     const last = runs[runs.length - 1];
-    if (last && last.font === f) last.s += ch;
-    else runs.push({ font: f, s: ch, w: 0 });
+    let f: PDFFont | null;
+    let w = 0;
+    if (/\s/.test(ch)) {
+      const near = last?.font ?? font;
+      if (!remaps.has(near) && hasChar(near, ch)) f = near;
+      else {
+        f = null;
+        w = spaceOf(near, size) ?? chain.map((c) => spaceOf(c, size)).find((x) => x != null) ?? size / 4;
+      }
+    } else f = chain.find((c) => hasChar(c, ch)) ?? style.fallback ?? font;
+    if (last && last.font === f) {
+      last.s += ch;
+      last.w += w;
+    } else runs.push({ font: f, s: ch, w });
   }
-  const space =
-    remap?.spaceWidth != null ? (remap.spaceWidth / 1000) * size : fallback ? measure(' ', fallback, size) : size / 4;
-  for (const r of runs) r.w = r.font ? measure(r.s, r.font, size) : [...r.s].length * space;
+  for (const r of runs) if (r.font) r.w = measure(r.s, r.font, size);
   return runs;
 }
 
