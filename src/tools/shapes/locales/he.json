@@ -1,0 +1,6 @@
+{
+  "rect": { "label": "מלבן", "fill": "מילוי" },
+  "ellipse": { "label": "אליפסה" },
+  "line": { "label": "קו" },
+  "arrow": { "label": "חץ" }
+}
