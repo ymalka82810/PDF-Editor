@@ -1,7 +1,17 @@
 /**
- * שמירת קובץ למשתמש. בדפדפן – הורדה. (סשן E מחליף/מרחיב לאנדרואיד עם Capacitor)
+ * שמירת קובץ למשתמש. בדפדפן – הורדה. באנדרואיד (Capacitor) – כתיבה לאחסון הזמני ושיתוף,
+ * כדי שהמשתמש יבחר איפה לשמור (אפליקציית הקבצים, Drive וכו').
  */
+import { Capacitor } from '@capacitor/core';
+
 export async function saveBytes(name: string, bytes: Uint8Array, type = 'application/pdf') {
+  if (Capacitor.isNativePlatform()) {
+    // import() דינמי: ב-build הרגיל (GitHub Pages) אין סיבה לגרור את @capacitor/filesystem ו-@capacitor/share
+    const [{ Directory, Filesystem }, { Share }] = await Promise.all([import('@capacitor/filesystem'), import('@capacitor/share')]);
+    const { uri } = await Filesystem.writeFile({ path: name, data: toBase64(bytes), directory: Directory.Cache });
+    await Share.share({ title: name, url: uri });
+    return;
+  }
   const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type }));
   const a = document.createElement('a');
   a.href = url;
@@ -15,4 +25,10 @@ export async function saveBytes(name: string, bytes: Uint8Array, type = 'applica
 /** שם לקובץ שנשמר: "x.pdf" ← "x-edited.pdf" */
 export function editedName(name: string) {
   return name.replace(/\.[^.]+$/, '') + '-edited.pdf';
+}
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
 }
