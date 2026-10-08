@@ -20,7 +20,7 @@
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
     --ink: #e9ecf5;
     --ink-soft: #c3cadf;
     --blue: #8fb0ec;
@@ -37,6 +37,24 @@
     --select: #7fb0ff;
     color-scheme: dark;
   }
+}
+/* בחירת מצב כהה ידנית (לא לפי העדפת המערכת) */
+:root[data-theme='dark'] {
+  --ink: #e9ecf5;
+  --ink-soft: #c3cadf;
+  --blue: #8fb0ec;
+  --blue-2: #b6cdf5;
+  --gold: #dfb564;
+  --line: #2a3252;
+  --soft: #202a48;
+  --bg: #0c1120;
+  --panel: #161d30;
+  --muted: #98a2c0;
+  --danger: #f08c80;
+  --on-accent: #0c1120;
+  --desk: #070a14;
+  --select: #7fb0ff;
+  color-scheme: dark;
 }
 
 [hidden] {
@@ -144,6 +162,12 @@ button[aria-pressed='true'] {
 .tool-group {
   display: flex;
   gap: 4px;
+  /* בטלפון הסרגל גולל אופקית (flex-wrap:nowrap); בלי זה הקבוצות היו מצטמצמות ועוטפות את הטקסט לשורה שנייה */
+  flex-shrink: 0;
+}
+.tool-group .tool {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .tool .icon {
   margin-inline-end: 4px;
@@ -171,6 +195,8 @@ button[aria-pressed='true'] {
   overflow: auto;
   background: var(--desk);
   position: relative;
+  /* הגלילה הרגילה נשארת לדפדפן; הפינצ'-זום מטופל ב-viewer.ts (משנה את viewer.setZoom) */
+  touch-action: pan-x pan-y;
 }
 .empty {
   margin: 20vh auto;
@@ -276,11 +302,173 @@ button[aria-pressed='true'] {
   color: #fff;
 }
 
+/* ---------- דיאלוגים (alert/confirm/prompt) ---------- */
+
+.dlg {
+  border: 0;
+  border-radius: 16px;
+  padding: 0;
+  width: min(420px, calc(100vw - 32px));
+  max-width: none;
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--sh-md);
+}
+.dlg::backdrop {
+  background: rgba(10, 16, 32, 0.5);
+}
+.dlg-form {
+  padding: 20px 22px;
+}
+.dlg-title {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+.dlg-body {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.dlg-field {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+.dlg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-top: 18px;
+}
+.dlg-actions button {
+  min-width: 88px;
+  min-height: 44px;
+}
+button.danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--on-accent);
+}
+button.danger:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+/* ---------- עזרה (?) ---------- */
+
+.help-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 0;
+  font-size: 0.95rem;
+}
+.help-list dt {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.help-list dd {
+  margin: 0;
+  color: var(--ink-soft);
+}
+kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--soft);
+  font-family: inherit;
+  font-size: 0.85em;
+}
+
+/* ---------- טלפון / מגע ---------- */
+
+.drawer-toggle {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  button,
+  .tool {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 @media (max-width: 700px) {
-  .panel {
-    display: none;
+  .drawer-toggle {
+    display: inline-flex;
+  }
+  /* מצב טלפון: יעדי לחיצה בגודל 44px לפחות, גם בלי pointer:coarse (למשל אמולציה בבדיקות) */
+  button,
+  .tool {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .topbar {
+    flex-wrap: wrap;
+  }
+  .toolbar {
+    position: sticky;
+    bottom: 0;
+    order: 3;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+    border-bottom: 0;
+    border-top: 1px solid var(--line);
+  }
+  .workspace {
+    order: 2;
   }
   .pages {
     padding: 12px;
+  }
+  /* הפאנלים הופכים למגירה שנפתחת מעל התצוגה, ולא תופסת מקום קבוע */
+  .panel {
+    position: fixed;
+    inset-block: 0;
+    z-index: 20;
+    width: min(85vw, 320px);
+    box-shadow: var(--sh-md);
+    transition: transform 0.2s ease;
+  }
+  .panel-start {
+    inset-inline-start: 0;
+    transform: translateX(-100%);
+  }
+  .panel-end {
+    inset-inline-end: 0;
+    transform: translateX(100%);
+  }
+  [dir='rtl'] .panel-start {
+    transform: translateX(100%);
+  }
+  [dir='rtl'] .panel-end {
+    transform: translateX(-100%);
+  }
+  .panel.open {
+    transform: none;
+  }
+  .drawer-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 16, 32, 0.4);
+    z-index: 19;
+  }
+  .drawer-backdrop.open {
+    display: block;
   }
 }

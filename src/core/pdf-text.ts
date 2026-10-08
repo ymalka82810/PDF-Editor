@@ -5,7 +5,7 @@
  */
 
 import bidiFactory from 'bidi-js';
-import { rgb, type PDFFont, type PDFPage } from 'pdf-lib';
+import { degrees, rgb, type PDFFont, type PDFPage } from 'pdf-lib';
 import type { Rect } from './types';
 
 const bidi = bidiFactory();
@@ -30,15 +30,52 @@ export function visualOrder(line: string, dir: Dir = 'auto'): string {
   return bidi.getReorderedString(line, levels);
 }
 
+/** גופן עם מפה מאות לקוד בגופן (remapFont) – getCharacterSet שלו מחזיר את הקודים הפנימיים, לא אותיות */
+interface Remap {
+  map: Record<string, string>;
+  /** רוחב הרווח (ביחידות 1/1000 em), כשאין לגופן צורה לרווח */
+  spaceWidth?: number;
+}
+const remaps = new WeakMap<PDFFont, Remap>();
+const charsets = new WeakMap<PDFFont, Set<number>>();
+
+/** האם יש בגופן צורה לתו */
+export function hasChar(font: PDFFont, ch: string): boolean {
+  const r = remaps.get(font);
+  if (r) return ch in r.map;
+  let set = charsets.get(font);
+  if (!set) charsets.set(font, (set = new Set(font.getCharacterSet())));
+  return set.has(ch.codePointAt(0)!);
+}
+
 /** תווים בטקסט שאין להם צורה בגופן */
 export function missingChars(font: PDFFont, text: string): string[] {
-  const set = new Set(font.getCharacterSet());
   const out = new Set<string>();
-  for (const ch of text) {
-    const cp = ch.codePointAt(0)!;
-    if (cp > 32 && !set.has(cp)) out.add(ch);
-  }
+  for (const ch of text) if (ch.codePointAt(0)! > 32 && !hasChar(font, ch)) out.add(ch);
   return [...out];
+}
+
+/**
+ * גופן מוטמע שמגיע מ-pdf.js: pdf.js ממיר כל גופן לקובץ שבו כל אות יושבת בקוד פרטי (PUA),
+ * ולכן כותבים בו דרך מפה מהאות האמיתית לקוד. ב-ToUnicode נשמרת האות האמיתית, כדי שחיפוש והעתקה יעבדו.
+ * הרווח בגופנים האלה הוא בדרך כלל ‎.notdef (ריבוע) – לכן spaceWidth, ו-drawLine משאיר במקומו רווח ריק.
+ */
+export function remapFont(font: PDFFont, map: Record<string, string>, spaceWidth?: number): PDFFont {
+  if (remaps.has(font)) return font;
+  type Glyph = { codePoints: number[] };
+  type Layout = (s: string, f?: unknown, script?: unknown, lang?: unknown, dir?: string) => { glyphs: Glyph[] };
+  const fk = (font as unknown as { embedder?: { font?: { layout?: Layout } } }).embedder?.font;
+  if (!fk?.layout) return font;
+  const layout = fk.layout.bind(fk);
+  fk.layout = (s, f) => {
+    const chars = [...s];
+    const run = layout(chars.map((c) => map[c] ?? c).join(''), f, undefined, undefined, 'ltr');
+    // אות אחת ← צורה אחת (אין ליגטורות בגופנים של pdf.js), לכן אפשר להחזיר לכל צורה את האות שלה
+    if (run.glyphs.length === chars.length) run.glyphs.forEach((g, i) => (g.codePoints = [chars[i].codePointAt(0)!]));
+    return run;
+  };
+  remaps.set(font, { map, spaceWidth });
+  return font;
 }
 
 export function measure(text: string, font: PDFFont, size: number) {
@@ -58,6 +95,15 @@ export interface LineStyle {
   color?: string;
   opacity?: number;
   dir?: Dir;
+  /** גופן לאותיות שאין ב-font (למשל גופן מוטמע חלקי) */
+  fallback?: PDFFont;
+  /**
+   * גופנים נוספים לפי סדר, לפני fallback: כל אות נכתבת בגופן הראשון שיש בו אותה
+   * (שורה מעורבת מ-Word – עברית ב-David ואנגלית ב-Arial)
+   */
+  fallbacks?: PDFFont[];
+  /** הטיה במעלות (נטוי בגופן שאין לו גרסה נטויה) */
+  skew?: number;
 }
 
 /** יישור start/end לפי הכיוון ← left/right */
@@ -74,11 +120,71 @@ function physical(align: Align, rtl: boolean): 'left' | 'right' | 'center' {
 export function drawLine(page: PDFPage, text: string, x: number, y: number, style: LineStyle, align: Align = 'start') {
   const rtl = style.dir === 'rtl' || (style.dir !== 'ltr' && isRtl(text));
   const visual = visualOrder(text, style.dir);
-  const w = measure(visual, style.font, style.size);
   const a = physical(align, rtl);
-  const left = a === 'left' ? x : a === 'right' ? x - w : x - w / 2;
-  page.drawText(visual, { x: left, y, size: style.size, font: style.font, color: hexColor(style.color), opacity: style.opacity });
+  const color = hexColor(style.color);
+  const xSkew = style.skew ? degrees(style.skew) : undefined;
+  if (simple(style)) {
+    const w = measure(visual, style.font, style.size);
+    const left = a === 'left' ? x : a === 'right' ? x - w : x - w / 2;
+    page.drawText(visual, { x: left, y, size: style.size, font: style.font, color, opacity: style.opacity, xSkew });
+    return w;
+  }
+  // כמה קטעים, כל אחד בגופן שיש בו את האותיות שלו. pdf.js מחבר אותם בחזרה לשורה אחת
+  const runs = splitRuns(visual, style);
+  const w = runs.reduce((s, r) => s + r.w, 0);
+  let left = a === 'left' ? x : a === 'right' ? x - w : x - w / 2;
+  for (const r of runs) {
+    if (r.font)
+      page.drawText(r.s, { x: left, y, size: style.size, font: r.font, color, opacity: style.opacity, xSkew });
+    left += r.w;
+  }
   return w;
+}
+
+/** רוחב שורה (בסדר לוגי) כפי ש-drawLine יכתוב אותה */
+export function lineWidth(text: string, style: LineStyle): number {
+  const visual = visualOrder(text, style.dir);
+  if (simple(style)) return measure(visual, style.font, style.size);
+  return splitRuns(visual, style).reduce((s, r) => s + r.w, 0);
+}
+
+/** גופן אחד שיש לו צורה לכל תו – כתיבה בפקודה אחת */
+const simple = (style: LineStyle) => !style.fallback && !style.fallbacks?.length && !remaps.has(style.font);
+
+/** רוחב רווח בגופן: הצורה שלו, או spaceWidth בגופן ממופה שאין לו צורה לרווח */
+function spaceOf(f: PDFFont, size: number): number | null {
+  const r = remaps.get(f);
+  if (r) return r.spaceWidth != null ? (r.spaceWidth / 1000) * size : null;
+  return hasChar(f, ' ') ? measure(' ', f, size) : null;
+}
+
+/**
+ * שורה בסדר תצוגה ← קטעים לפי הגופן: כל אות בגופן הראשון ברשימה שיש בו אותה.
+ * רווח נשאר בגופן של הקטע שלפניו אם יש בו רווח; אחרת רווח ריק (font=null) ברוחב הרווח של הגופן הזה.
+ */
+function splitRuns(visual: string, style: LineStyle) {
+  const { font, size } = style;
+  const chain = [font, ...(style.fallbacks ?? []), ...(style.fallback ? [style.fallback] : [])];
+  const runs: { font: PDFFont | null; s: string; w: number }[] = [];
+  for (const ch of visual) {
+    const last = runs[runs.length - 1];
+    let f: PDFFont | null;
+    let w = 0;
+    if (/\s/.test(ch)) {
+      const near = last?.font ?? font;
+      if (!remaps.has(near) && hasChar(near, ch)) f = near;
+      else {
+        f = null;
+        w = spaceOf(near, size) ?? chain.map((c) => spaceOf(c, size)).find((x) => x != null) ?? size / 4;
+      }
+    } else f = chain.find((c) => hasChar(c, ch)) ?? style.fallback ?? font;
+    if (last && last.font === f) {
+      last.s += ch;
+      last.w += w;
+    } else runs.push({ font: f, s: ch, w });
+  }
+  for (const r of runs) if (r.font) r.w = measure(r.s, r.font, size);
+  return runs;
 }
 
 /** שבירת טקסט לשורות לפי רוחב (בסדר לוגי). ירידות שורה בטקסט נשמרות */
