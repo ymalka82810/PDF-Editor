@@ -1,0 +1,86 @@
+/* פקדים משותפים לכלי התוכן (src/tools/{add-text,image,shapes,highlight,ink,signature}) */
+
+.widget-bar {
+  position: absolute;
+  left: 0;
+  top: -40px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  background: var(--panel, #fff);
+  border: 1px solid var(--line, #ddd);
+  border-radius: 8px;
+  padding: 4px 6px;
+  box-shadow: var(--sh-sm, 0 1px 2px rgba(0, 0, 0, 0.15));
+  white-space: nowrap;
+  z-index: 5;
+  pointer-events: auto;
+  cursor: default;
+}
+.widget-bar.below {
+  top: auto;
+  bottom: -40px;
+}
+
+.widget-swatches {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+.widget-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  padding: 0;
+  cursor: pointer;
+}
+.widget-swatch.active {
+  outline: 2px solid var(--select, #2f6fde);
+  outline-offset: 1px;
+}
+.widget-swatch-custom {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.widget-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.widget-stepper button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  line-height: 1;
+  border-radius: 4px;
+}
+.widget-stepper output {
+  min-width: 2em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85em;
+}
+
+.widget-toggle,
+.widget-segmented button {
+  padding: 2px 8px;
+  font-size: 0.85em;
+  border-radius: 4px;
+}
+.widget-toggle[aria-pressed='true'],
+.widget-segmented button[aria-pressed='true'] {
+  background: var(--blue, #1e3a63);
+  color: var(--on-accent, #fff);
+  border-color: var(--blue, #1e3a63);
+}
+.widget-segmented {
+  display: inline-flex;
+  gap: 2px;
+}
