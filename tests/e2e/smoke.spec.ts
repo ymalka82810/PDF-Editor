@@ -222,6 +222,17 @@ test('phone viewport: toolbar is reachable and touch targets are at least 44px',
   expect(box.height).toBeGreaterThanOrEqual(44);
 });
 
+test('phone viewport: a crowded toolbar (many tool groups) scrolls horizontally instead of wrapping', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openFixture(page, 'multipage.pdf', 5);
+  const toolbar = page.locator('.toolbar');
+  const [scrollWidth, clientHeight] = await toolbar.evaluate((el) => [el.scrollWidth, el.clientHeight]);
+  // כלי "page" (סיבוב, מחיקה, שכפול, ...) יוצרים סרגל רחב יותר מהמסך; חשוב שהוא יגלול אופקית ולא יתפוס גובה רב
+  expect(scrollWidth).toBeGreaterThan(390);
+  expect(clientHeight).toBeLessThan(100);
+  await expect(page.locator('.tool[data-tool=pages-rotate-left]')).toBeAttached();
+});
+
 test('cropbox.pdf: a dragged rectangle lands at the right PDF user-space position', async ({ page }) => {
   await openFixture(page, 'cropbox.pdf', 1);
   const pageEl = page.locator('.page[data-page-id]').first();

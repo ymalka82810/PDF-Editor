@@ -162,6 +162,12 @@ button[aria-pressed='true'] {
 .tool-group {
   display: flex;
   gap: 4px;
+  /* בטלפון הסרגל גולל אופקית (flex-wrap:nowrap); בלי זה הקבוצות היו מצטמצמות ועוטפות את הטקסט לשורה שנייה */
+  flex-shrink: 0;
+}
+.tool-group .tool {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .tool .icon {
   margin-inline-end: 4px;
