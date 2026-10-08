@@ -179,8 +179,11 @@ const tool: Tool = {
     const d = dataOf(op);
     if (!d.text.trim()) return;
     const font = await ctx.font(d.font);
+    // מילה ארוכה מהתיבה לא תצא מהעמוד (במסגרת מסובבת שולי העמוד אינם אופקיים – שם בלי גבולות)
+    const upright = !((((d.rotate ?? 0) % 360) + 360) % 360);
+    const bounds = upright ? { left: ctx.page.origin.x, right: ctx.page.origin.x + ctx.page.width } : undefined;
     drawInFrame(ctx.pdfPage, userSpace(ctx.page, op.rect), d.rotate, (r) =>
-      drawTextBox(ctx.pdfPage, d.text, r, { font, size: d.size, color: d.color, align: d.align }),
+      drawTextBox(ctx.pdfPage, d.text, r, { font, size: d.size, color: d.color, align: d.align, bounds }),
     );
   },
 };

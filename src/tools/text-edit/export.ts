@@ -118,7 +118,9 @@ export async function exportTextEdit(op: Operation, ctx: ExportCtx) {
   const c = userSpace(ctx.page, coverRect(d));
   ctx.pdfPage.drawRectangle({ x: c.x, y: c.y, width: c.w, height: c.h, color: hexColor(d.bg), borderWidth: 0 });
   if (!d.text.trim()) return;
-  const style = lineStyle(d, await fontsFor(d, ctx));
+  // שורה שהתארכה מעבר לשולי העמוד מוזזת פנימה (אחרת היא נחתכת – גם בתצוגה וגם בחילוץ הטקסט)
+  const bounds = { left: ctx.page.origin.x, right: ctx.page.origin.x + ctx.page.width };
+  const style = { ...lineStyle(d, await fontsFor(d, ctx)), bounds };
   const r = userSpace(ctx.page, op.rect);
   const y = r.y + baselineOffset(d);
   // יישור כמו במקור: עברית לימין, אנגלית לשמאל

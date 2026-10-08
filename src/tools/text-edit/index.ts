@@ -167,9 +167,16 @@ function newData(view: PageView, line: TextLine): TextEditData {
 }
 
 /** הרוחב החדש של המלבן, כשהעיגון נשאר בצד של תחילת השורה (ימין בעברית) */
-function resized(rect: Rect, w: number, rtl: boolean): Rect {
+function resized(rect: Rect, w: number, rtl: boolean, pageWidth: number): Rect {
   if (!(w > 1)) return rect;
-  return rtl ? { ...rect, x: rect.x + rect.w - w, w } : { ...rect, w };
+  const r = rtl ? { ...rect, x: rect.x + rect.w - w, w } : { ...rect, w };
+  return insidePage(r, pageWidth);
+}
+
+/** המלבן בתוך רוחב העמוד – כמו ש-drawLine (bounds) יכתוב אותו בייצוא */
+export function insidePage(r: Rect, pageWidth: number): Rect {
+  const w = Math.min(r.w, pageWidth);
+  return { ...r, w, x: Math.min(Math.max(r.x, 0), pageWidth - w) };
 }
 
 function startEdit(view: PageView, api: EditorApi, target: { item: TextLine } | { op: Operation }) {
@@ -206,7 +213,7 @@ function startEdit(view: PageView, api: EditorApi, target: { item: TextLine } | 
     wrap.remove();
     view.overlay.querySelector('.text-edit-hidden')?.classList.remove('text-edit-hidden');
     if (!commit) return;
-    const newRect = text.trim() ? resized(rect, width, d.original.rtl) : rect;
+    const newRect = text.trim() ? resized(rect, width, d.original.rtl, view.page.width) : rect;
     if (op) {
       if (text !== d.text) api.store.updateOp(op.id, { data: { text }, rect: newRect });
     } else if (text !== d.original.str) {
