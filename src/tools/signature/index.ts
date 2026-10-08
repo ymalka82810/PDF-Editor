@@ -5,6 +5,7 @@
  */
 
 import type { EditorApi, Tool } from '../../core/registry';
+import { movesOf } from '../../ui/widgets/pointer';
 import { placeImage, pickImageFile } from '../image';
 import { getImage, putImage, putImageFile } from '../image/store';
 import { bytesToDataUrl, dataUrlToBytes, loadSaved, removeSaved, saveSignature } from './saved';
@@ -57,7 +58,7 @@ class Pad {
     this.strokes.push(stroke);
     const move = (m: PointerEvent) => {
       if (m.pointerId !== e.pointerId) return;
-      for (const c of m.getCoalescedEvents?.() ?? [m]) stroke.push(at(c));
+      for (const c of movesOf(m)) stroke.push(at(c));
       this.redraw();
     };
     const up = (m: PointerEvent) => {

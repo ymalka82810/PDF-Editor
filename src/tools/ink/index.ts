@@ -10,6 +10,7 @@ import { hexColor } from '../../core/pdf-text';
 import type { EditorApi, ExportCtx, PagePointer, PageView, Tool } from '../../core/registry';
 import type { Operation, Point, Rect } from '../../core/types';
 import { floatingBar, stepper, swatches } from '../../ui/widgets/controls';
+import { movesOf } from '../../ui/widgets/pointer';
 import he from './locales/he.json';
 import en from './locales/en.json';
 import './style.css';
@@ -105,7 +106,7 @@ function draw(p: PagePointer, api: EditorApi) {
   const move = (m: PointerEvent) => {
     if (m.pointerId !== id) return;
     // אירועים שהדפדפן איחד (עט מהיר) – כולם
-    for (const e of m.getCoalescedEvents?.() ?? [m]) pts.push({ x: e.clientX - box.left, y: e.clientY - box.top });
+    for (const e of movesOf(m)) pts.push({ x: e.clientX - box.left, y: e.clientY - box.top });
     redraw();
   };
   const finish = (ok: boolean) => {
