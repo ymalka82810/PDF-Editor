@@ -1,0 +1,17 @@
+{
+  "ocr-recognize": {
+    "label": "Recognize text (OCR)",
+    "running": "Recognizing text…",
+    "done": "Text recognized - it can now be edited",
+    "failed": "Text recognition failed",
+    "offline": "Text recognition needs internet the first time (downloading the language model)",
+    "noSelection": "No pages to recognize"
+  },
+  "ocr-searchable": {
+    "label": "Make searchable",
+    "done": "The page will be searchable after saving",
+    "failed": "Text recognition failed",
+    "offline": "Text recognition needs internet the first time (downloading the language model)",
+    "noSelection": "No pages to recognize"
+  }
+}
