@@ -8,7 +8,6 @@
  */
 
 import { blankPage, normRotation } from '../../core/document';
-import { exportPdf } from '../../core/export';
 import type { EditorApi, Locale, Tool } from '../../core/registry';
 import type { PageRef } from '../../core/types';
 import { editedName, saveBytes } from '../../ui/save';
@@ -17,6 +16,10 @@ import { duplicatePages } from './duplicate';
 import { pageSelection } from './selection';
 import en from './locales/en.json';
 import he from './locales/he.json';
+
+// pdf-lib נטען רק כשמייצאים (כמו ב-ui/app.ts) – ייבוא רגיל היה מחזיר אותו ל-bundle הראשי
+const exportPdf: typeof import('../../core/export').exportPdf = async (...args) =>
+  (await import('../../core/export')).exportPdf(...args);
 
 type Dict = Record<string, Locale>;
 const dicts = { he: he as Dict, en: en as Dict };
