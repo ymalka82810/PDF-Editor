@@ -104,6 +104,11 @@ export interface LineStyle {
   fallbacks?: PDFFont[];
   /** הטיה במעלות (נטוי בגופן שאין לו גרסה נטויה) */
   skew?: number;
+  /**
+   * גבולות אופקיים (בדרך כלל השוליים של העמוד הנראה). שורה שחורגת מהם מוזזת פנימה, ושורה רחבה מהם מוקטנת.
+   * בלי זה טקסט מחוץ לעמוד לא נראה, ו-pdf.js גם חותך אותו בחילוץ הטקסט (חיפוש והעתקה).
+   */
+  bounds?: { left: number; right: number };
 }
 
 /** יישור start/end לפי הכיוון ← left/right */
@@ -123,16 +128,35 @@ export function drawLine(page: PDFPage, text: string, x: number, y: number, styl
   const a = physical(align, rtl);
   const color = hexColor(style.color);
   const xSkew = style.skew ? degrees(style.skew) : undefined;
+  const b = style.bounds;
+  if (b && b.right > b.left) {
+    // רחבה מהגבולות: מקטינים את הגופן (ומשאירים מעט מרווח לעיגול)
+    const full = lineWidth(text, style);
+    if (full > b.right - b.left)
+      return drawLine(page, text, x, y, { ...style, size: (style.size * (b.right - b.left)) / full / 1.001 }, align);
+  }
+  /** הקצה השמאלי של השורה, בתוך הגבולות */
+  const leftOf = (w: number) => {
+    const left = a === 'left' ? x : a === 'right' ? x - w : x - w / 2;
+    return b ? Math.min(Math.max(left, b.left), b.right - w) : left;
+  };
   if (simple(style)) {
     const w = measure(visual, style.font, style.size);
-    const left = a === 'left' ? x : a === 'right' ? x - w : x - w / 2;
-    page.drawText(visual, { x: left, y, size: style.size, font: style.font, color, opacity: style.opacity, xSkew });
+    page.drawText(visual, {
+      x: leftOf(w),
+      y,
+      size: style.size,
+      font: style.font,
+      color,
+      opacity: style.opacity,
+      xSkew,
+    });
     return w;
   }
   // כמה קטעים, כל אחד בגופן שיש בו את האותיות שלו. pdf.js מחבר אותם בחזרה לשורה אחת
   const runs = splitRuns(visual, style);
   const w = runs.reduce((s, r) => s + r.w, 0);
-  let left = a === 'left' ? x : a === 'right' ? x - w : x - w / 2;
+  let left = leftOf(w);
   for (const r of runs) {
     if (r.font)
       page.drawText(r.s, { x: left, y, size: style.size, font: r.font, color, opacity: style.opacity, xSkew });
