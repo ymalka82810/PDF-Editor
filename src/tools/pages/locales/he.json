@@ -1,0 +1,15 @@
+{
+  "pages": {
+    "count": "סה\"כ {total} עמודים",
+    "gotoLabel": "מעבר לעמוד",
+    "noSelection": "לא נבחרו עמודים"
+  },
+  "pages-rotate-left": { "label": "סיבוב שמאלה" },
+  "pages-rotate-right": { "label": "סיבוב ימינה" },
+  "pages-duplicate": { "label": "שכפול עמוד" },
+  "pages-delete": { "label": "מחיקת עמודים" },
+  "pages-insert-blank": { "label": "הוספת עמוד ריק" },
+  "pages-add-file": { "label": "הוספת קובץ" },
+  "pages-extract": { "label": "שמירת הנבחרים כקובץ" },
+  "pages-split-all": { "label": "פיצול לכל עמוד" }
+}
