@@ -3,7 +3,7 @@
  * השכבה הכללית מטפלת בבחירה, הזזה, שינוי גודל ולחיצה כפולה; לחיצה על מקום ריק עוברת לכלי הפעיל.
  */
 
-import { rectToPdf, rectToView, toPdf, viewSize, type ViewGeom } from '../core/coords';
+import { pdfHandle, rectToPdf, rectToView, toPdf, viewSize, type Handle, type ViewGeom } from '../core/coords';
 import { registry, type EditorApi, type PageView } from '../core/registry';
 import type { DocState, PageRef, Rect } from '../core/types';
 
@@ -15,8 +15,7 @@ interface Entry extends PageView {
   visible: boolean;
 }
 
-const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
-type Handle = (typeof HANDLES)[number];
+const HANDLES: Handle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
 export class Viewer {
   readonly el: HTMLElement;
@@ -127,7 +126,8 @@ export class Viewer {
       let e = this.entries.get(p.id);
       if (!e) e = this.create(p);
       else if (e.page !== p) {
-        const changed = e.page.rotation !== p.rotation || e.page.sourceId !== p.sourceId || e.page.sourceIndex !== p.sourceIndex;
+        const changed =
+          e.page.rotation !== p.rotation || e.page.sourceId !== p.sourceId || e.page.sourceIndex !== p.sourceIndex;
         e.page = p;
         e.geom = this.geomOf(p);
         if (changed) e.drawn = '';
@@ -201,7 +201,11 @@ export class Viewer {
         if (e.drawn !== key) return;
         const page = await doc.getPage(e.page.sourceIndex + 1);
         if (e.drawn !== key) return;
-        const task = page.render({ canvas: target, canvasContext: ctx, viewport: page.getViewport({ scale, rotation: e.page.rotation }) });
+        const task = page.render({
+          canvas: target,
+          canvasContext: ctx,
+          viewport: page.getViewport({ scale, rotation: e.page.rotation }),
+        });
         e.task = task;
         await task.promise;
       } catch (err) {
@@ -266,7 +270,10 @@ export class Viewer {
     }
     if (activeTool?.onPointerDown) {
       const r = e.overlay.getBoundingClientRect();
-      activeTool.onPointerDown({ view: e, event: ev, point: toPdf(e.geom, { x: ev.clientX - r.left, y: ev.clientY - r.top }) }, this.api);
+      activeTool.onPointerDown(
+        { view: e, event: ev, point: toPdf(e.geom, { x: ev.clientX - r.left, y: ev.clientY - r.top }) },
+        this.api,
+      );
       return;
     }
     this.api.store.select(null);
@@ -282,6 +289,7 @@ export class Viewer {
   /** הזזה (handle=null) או שינוי גודל של פעולה. הכל ביחידות מסך, ובסוף ממירים חזרה ל-PDF */
   private drag(e: Entry, ev: PointerEvent, startRect: Rect, id: string, handle: Handle | null) {
     const start = rectToView(e.geom, startRect);
+    const op = this.api.store.get().ops.find((o) => o.id === id);
     const x0 = ev.clientX,
       y0 = ev.clientY;
     const tx = this.api.store.begin();
@@ -309,7 +317,12 @@ export class Viewer {
         }
         if (handle.includes('s')) r.h = Math.max(4, r.h + dy);
       }
-      this.api.store.updateOp(id, { rect: rectToPdf(e.geom, r) }, { record: false });
+      let rect = rectToPdf(e.geom, r);
+      // הכלי יכול לתקן את המלבן בשינוי גודל (שמירת יחס), במערכת של העמוד
+      const tool = handle && op ? registry.forOp(op.type) : undefined;
+      if (handle && op && tool?.constrainRect)
+        rect = tool.constrainRect(op, rect, pdfHandle(handle, e.geom.rotation), m.shiftKey);
+      this.api.store.updateOp(id, { rect }, { record: false });
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
