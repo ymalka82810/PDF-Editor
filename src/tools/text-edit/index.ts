@@ -9,7 +9,7 @@ import type { EditorApi, PageView, Tool } from '../../core/registry';
 import type { Operation, Rect, TextItem } from '../../core/types';
 import { place } from '../../ui/viewer';
 import { clearFonts, fontKey, getFont, missingChars } from '../../pdf-read/fonts';
-import { clearTextCache, onTextItems, textItemsOf } from '../../pdf-read/text';
+import { clearTextCache, onTextItems, textItemsOf, visualLines, type TextLine } from '../../pdf-read/text';
 import { baselineOffset, coverRect, dataOf, exportTextEdit, OP_TYPE, type TextEditData } from './export';
 import { analyzeInk } from './ink';
 import he from './locales/he.json';
@@ -35,7 +35,7 @@ const editedKeys = (api: EditorApi) =>
 /* ---------- סימון הפריטים ---------- */
 
 async function showFrames(view: PageView, api: EditorApi) {
-  const items = await textItemsOf(api, view.page).catch(() => []);
+  const items = await linesOf(api, view);
   for (const el of view.overlay.querySelectorAll(':scope > .text-edit-frame')) el.remove();
   if (!active) return;
   const edited = editedKeys(api);
@@ -133,8 +133,18 @@ function renderOp(op: Operation, el: HTMLElement, view: PageView) {
 /* ---------- עריכה במקום ---------- */
 
 /** נתוני פעולה חדשה מפריט: הגופן מהמאגר, וצבעי הדיו והרקע מה-canvas של העמוד */
-function newData(view: PageView, item: TextItem): TextEditData {
-  const key = item.fontName && view.page.sourceId ? fontKey(view.page.sourceId, item.fontName) : undefined;
+function newData(view: PageView, line: TextLine): TextEditData {
+  const { parts, ...item } = line;
+  const keyOf = (it: TextItem) =>
+    it.fontName && view.page.sourceId ? fontKey(view.page.sourceId, it.fontName) : undefined;
+  const key = keyOf(item);
+  // שאר הגופנים של השורה, לפי כמות הטקסט בכל אחד
+  const weight = new Map<string, number>();
+  for (const p of parts) {
+    const k = keyOf(p);
+    if (k && k !== key && getFont(k)) weight.set(k, (weight.get(k) ?? 0) + p.str.length);
+  }
+  const more = [...weight.keys()].sort((a, b) => weight.get(b)! - weight.get(a)!);
   const ef = key ? getFont(key) : undefined;
   let ink = { fg: '#000000', bg: '#ffffff' };
   const canvas = view.el.querySelector('canvas');
@@ -147,6 +157,7 @@ function newData(view: PageView, item: TextItem): TextEditData {
     original: item,
     text: item.str,
     ...(ef ? { fontKey: key } : {}),
+    ...(more.length ? { fontKeys: more } : {}),
     size: item.size,
     color: item.color ?? ink.fg,
     bg: ink.bg,
@@ -161,10 +172,10 @@ function resized(rect: Rect, w: number, rtl: boolean): Rect {
   return rtl ? { ...rect, x: rect.x + rect.w - w, w } : { ...rect, w };
 }
 
-function startEdit(view: PageView, api: EditorApi, target: { item: TextItem } | { op: Operation }) {
+function startEdit(view: PageView, api: EditorApi, target: { item: TextLine } | { op: Operation }) {
   editor?.close(true);
   const op = 'op' in target ? target.op : null;
-  const d = op ? dataOf(op) : newData(view, (target as { item: TextItem }).item);
+  const d = op ? dataOf(op) : newData(view, (target as { item: TextLine }).item);
   const rect = op ? op.rect : d.original.rect;
   const s = view.geom.scale;
 
@@ -238,9 +249,14 @@ function startEdit(view: PageView, api: EditorApi, target: { item: TextItem } | 
 }
 
 /** הפריט שבנקודה (הקטן ביותר, אם יש כמה) */
-function hit(items: TextItem[], p: { x: number; y: number }, skip: Set<string>) {
+/** השורות הוויזואליות של עמוד (פריט לחיץ = שורה שלמה, גם כשהיא בכמה גופנים וכיוונים) */
+async function linesOf(api: EditorApi, view: PageView): Promise<TextLine[]> {
+  return visualLines(await textItemsOf(api, view.page).catch(() => []));
+}
+
+function hit(items: TextLine[], p: { x: number; y: number }, skip: Set<string>) {
   const tol = 1;
-  let best: TextItem | null = null;
+  let best: TextLine | null = null;
   for (const it of items) {
     const r = it.rect;
     if (skip.has(itemKey(it))) continue;
@@ -295,7 +311,7 @@ const tool: Tool = {
     // בלי זה הלחיצה מעבירה את המיקוד לגוף הדף וסוגרת את העורך מיד אחרי שנפתח
     p.event.preventDefault();
     void (async () => {
-      const items = await textItemsOf(api, p.view.page);
+      const items = await linesOf(api, p.view);
       if (!items.length) return api.toast(api.t('text-edit.noText'));
       const item = hit(items, p.point, editedKeys(api));
       if (item) startEdit(p.view, api, { item });
