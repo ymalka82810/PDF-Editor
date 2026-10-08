@@ -22,6 +22,8 @@ export interface TextEditData {
   text: string;
   /** הגופן המוטמע (fontKey ב-pdf-read/fonts.ts) */
   fontKey?: string;
+  /** גופנים נוספים של השורה (שורה מעורבת), לפי הסדר – לאותיות שאין ב-fontKey */
+  fontKeys?: string[];
   size: number;
   /** '#rrggbb' */
   color: string;
@@ -50,21 +52,36 @@ export function coverRect(d: TextEditData): Rect {
  * הגופן לכתיבה: המוטמע מהקובץ (או סטנדרטי כמו Helvetica) – רק אם יש בו את כל האותיות של הטקסט.
  * אחרת כל השורה בגופן ברירת המחדל: שורה בשני גופנים נקראת ב-pdf.js כמה פריטים נפרדים, וחיפוש והעתקה נשברים.
  */
-export async function fontsFor(d: TextEditData, ctx: Pick<ExportCtx, 'pdf' | 'font' | 'embedFontBytes'>) {
+export async function fontsFor(
+  d: TextEditData,
+  ctx: Pick<ExportCtx, 'pdf' | 'font' | 'embedFontBytes'>,
+): Promise<{ font: PDFFont; fallbacks?: PDFFont[] }> {
   const fallback = await ctx.font(d.bold ? 'default-bold' : 'default');
-  const ef = d.fontKey ? getFont(d.fontKey) : undefined;
-  let font: PDFFont | null = null;
+  const keys = [d.fontKey, ...(d.fontKeys ?? [])].filter((k): k is string => !!k);
+  const chain: PDFFont[] = [];
+  for (const k of keys) {
+    const f = await pdfFont(k, ctx);
+    if (f) chain.push(f);
+  }
+  // שורה מעורבת: כל אות בגופן הראשון בשורה שיש בו אותה – כמו במקור
+  const covered = (ch: string) => ch.codePointAt(0)! <= 32 || chain.some((f) => !missingChars(f, ch).length);
+  if (!chain.length || ![...d.text].every(covered)) return { font: fallback };
+  return chain.length > 1 ? { font: chain[0], fallbacks: chain.slice(1) } : { font: chain[0] };
+}
+
+/** גופן מהמאגר ← גופן ב-pdf-lib: המוטמע (ממופה), או סטנדרטי כמו Helvetica, או null */
+async function pdfFont(key: string, ctx: Pick<ExportCtx, 'pdf' | 'embedFontBytes'>): Promise<PDFFont | null> {
+  const ef = getFont(key);
   if (ef?.data) {
     try {
-      font = remapFont(await ctx.embedFontBytes('pdf:' + ef.key, ef.data), ef.map, ef.spaceWidth);
+      return remapFont(await ctx.embedFontBytes('pdf:' + ef.key, ef.data), ef.map, ef.spaceWidth);
     } catch (err) {
       console.warn('לא ניתן להטמיע את הגופן מהקובץ', ef.ps, err);
+      return null;
     }
-  } else if (ef) {
-    const std = standardFontName(ef);
-    if (std) font = await standard(ctx.pdf, std);
   }
-  return { font: font && !missingChars(font, d.text).length ? font : fallback };
+  const std = ef && standardFontName(ef);
+  return std ? standard(ctx.pdf, std) : null;
 }
 
 const standards = new WeakMap<PDFDocument, Map<string, Promise<PDFFont>>>();
@@ -78,7 +95,7 @@ function standard(pdf: PDFDocument, name: string) {
 }
 
 /** הסגנון של השורה לפי הנתונים והגופנים */
-export function lineStyle(d: TextEditData, fonts: { font: PDFFont }): LineStyle {
+export function lineStyle(d: TextEditData, fonts: { font: PDFFont; fallbacks?: PDFFont[] }): LineStyle {
   return {
     ...fonts,
     size: d.size,
