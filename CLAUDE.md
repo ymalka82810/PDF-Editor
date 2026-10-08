@@ -6,7 +6,7 @@ pdf.js מציג את הקובץ, ו-pdf-lib כותב PDF אמיתי (הטקסט 
 ## פקודות
 - `npm run dev` – שרת פיתוח (http://localhost:5173)
 - `npm test` – בדיקות יחידה (Vitest, סביבת node)
-- `npm run e2e` – בדיקות Playwright (פעם ראשונה: `npx playwright install chromium`)
+- `npm run e2e` – בדיקות Playwright (פעם ראשונה: `npx playwright install chromium`). כל worktree מקבל פורט משלו אוטומטית, כך שסשנים לא מתנגשים
 - `npm run typecheck`, `npm run lint`, `npm run build`
 - `npm run fixtures` – יוצר מחדש את tests/fixtures/*.pdf
 

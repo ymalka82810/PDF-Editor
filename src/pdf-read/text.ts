@@ -191,3 +191,118 @@ export function fixVisualOrder(s: string): string {
     .replace(/[0-9A-Za-z:./-]+/g, (m) => [...m].reverse().join(''))
     .replace(/[()]/g, (c) => (c === '(' ? ')' : '('));
 }
+
+/** שורה ויזואלית: פריט אחד שמאחד כמה פריטים צמודים באותו קו בסיס, והפריטים שמהם נבנה */
+export interface TextLine extends TextItem {
+  parts: TextItem[];
+}
+
+type Kind = 'r' | 'l' | 'n';
+const HEB = /[֐-׿]/g;
+const LAT = /[A-Za-z]/g;
+const kindOf = (s: string): Kind => (/[֐-׿]/.test(s) ? 'r' : /[A-Za-z0-9]/.test(s) ? 'l' : 'n');
+const count = (s: string, re: RegExp) => s.match(re)?.length ?? 0;
+
+/**
+ * איחוד פריטים לשורות ויזואליות: פריטים באותו קו בסיס וגודל דומה, עם רווח קטן ביניהם –
+ * גם בגופנים שונים ובכיוונים שונים (Word שומר שורה מעורבת בכמה פריטים: עברית, "English", עברית).
+ * הסדר הלוגי לפי כיוון רוב השורה: בשורה עברית הרצפים מימין לשמאל, ורצף אנגלית בתוכה נשאר משמאל לימין.
+ * פריט בודד מוחזר כמו שהוא (עם parts של עצמו). הסדר בין השורות – לפי הפריט הראשון של כל שורה.
+ */
+export function visualLines(items: TextItem[]): TextLine[] {
+  const idx = new Map(items.map((it, i) => [it, i]));
+  const sorted = [...items].sort((a, b) => b.baseline - a.baseline);
+  // קבוצות לפי קו בסיס
+  const rows: TextItem[][] = [];
+  for (const it of sorted) {
+    const row = rows[rows.length - 1];
+    if (row && Math.abs(row[0].baseline - it.baseline) < Math.min(row[0].size, it.size) * 0.3) row.push(it);
+    else rows.push([it]);
+  }
+  const lines: TextLine[] = [];
+  for (const row of rows) {
+    row.sort((a, b) => a.rect.x - b.rect.x);
+    let cur: TextItem[] = [];
+    for (const it of row) {
+      const prev = cur[cur.length - 1];
+      const size = prev ? Math.min(prev.size, it.size) : 0;
+      const right = prev ? Math.max(...cur.map((p) => p.rect.x + p.rect.w)) : 0;
+      const gap = it.rect.x - right;
+      const fits =
+        prev &&
+        prev.origin === it.origin &&
+        it.size / prev.size < 1.35 &&
+        prev.size / it.size < 1.35 &&
+        gap > -size * 0.3 &&
+        gap < size * 1.0;
+      if (!fits && cur.length) {
+        lines.push(merge(cur));
+        cur = [];
+      }
+      cur.push(it);
+    }
+    if (cur.length) lines.push(merge(cur));
+  }
+  return lines.sort(
+    (a, b) => Math.min(...a.parts.map((p) => idx.get(p)!)) - Math.min(...b.parts.map((p) => idx.get(p)!)),
+  );
+}
+
+/** פריטים בסדר משמאל לימין ← שורה אחת */
+function merge(parts: TextItem[]): TextLine {
+  if (parts.length === 1) return { ...parts[0], parts };
+  const all = parts.map((p) => p.str).join(' ');
+  const heb = count(all, HEB);
+  const lat = count(all, LAT);
+  const rtl = heb > lat || (heb === lat && parts.some((p) => p.rtl));
+  const base: Kind = rtl ? 'r' : 'l';
+  // סימנים בלבד (נקודה, מקף) מקבלים את הכיוון של השכנים, ובין כיוונים שונים – את כיוון השורה
+  const kinds = parts.map((p) => kindOf(p.str));
+  const resolved = kinds.map((k, i) => {
+    if (k !== 'n') return k;
+    const l = kinds
+      .slice(0, i)
+      .reverse()
+      .find((x) => x !== 'n');
+    const r = kinds.slice(i + 1).find((x) => x !== 'n');
+    return l && l === r ? l : base;
+  });
+  // רצפים בכיוון אחד, משמאל לימין
+  const runs: { k: Kind; items: TextItem[] }[] = [];
+  parts.forEach((p, i) => {
+    const last = runs[runs.length - 1];
+    if (last && last.k === resolved[i]) last.items.push(p);
+    else runs.push({ k: resolved[i], items: [p] });
+  });
+  const ordered = (rtl ? [...runs].reverse() : runs).flatMap((r) => (r.k === 'r' ? [...r.items].reverse() : r.items));
+  let str = '';
+  ordered.forEach((p, i) => {
+    if (i) {
+      const q = ordered[i - 1];
+      const gap = Math.max(p.rect.x - (q.rect.x + q.rect.w), q.rect.x - (p.rect.x + p.rect.w));
+      if (gap > Math.min(p.size, q.size) * 0.15 && !/\s$/.test(str) && !/^\s/.test(p.str)) str += ' ';
+    }
+    str += p.str;
+  });
+  // הגופן, הגודל וקו הבסיס – של החלק הארוך ביותר
+  const main = parts.reduce((a, b) => (b.str.length > a.str.length ? b : a));
+  const x = Math.min(...parts.map((p) => p.rect.x));
+  const y = Math.min(...parts.map((p) => p.rect.y));
+  const r = Math.max(...parts.map((p) => p.rect.x + p.rect.w));
+  const t = Math.max(...parts.map((p) => p.rect.y + p.rect.h));
+  const colors = new Set(parts.map((p) => p.color));
+  const line: TextLine = {
+    pageId: main.pageId,
+    str,
+    rect: { x, y, w: r - x, h: t - y },
+    baseline: main.baseline,
+    size: main.size,
+    rtl,
+    origin: main.origin,
+    parts,
+  };
+  if (main.fontName) line.fontName = main.fontName;
+  if (colors.size === 1 && main.color) line.color = main.color;
+  if (main.italic) line.italic = true;
+  return line;
+}
